@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1220">
+  <title>Süre Alarmı</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">⏳</span>
+      <div>
+        <h1>Süre Alarmı</h1>
+        <p class="subtitle">Saat değil, süre kur</p>
+      </div>
+    </div>
+    <div class="now" id="now">--:--</div>
+  </header>
+
+  <main class="layout">
+    <!-- Alarm kurma paneli -->
+    <section class="card setup" aria-labelledby="setup-title">
+      <h2 id="setup-title">Yeni alarm</h2>
+
+      <div class="dial" id="dial">
+        <svg viewBox="0 0 200 200" class="dial-svg" aria-hidden="true">
+          <circle cx="100" cy="100" r="88" class="dial-track"/>
+          <circle cx="100" cy="100" r="88" class="dial-fill" id="dialFill"/>
+        </svg>
+        <div class="dial-center">
+          <div class="dial-time"><span id="dispH">0</span><small>sa</small> <span id="dispM">00</span><small>dk</small></div>
+          <div class="dial-ring">Çalma saati <strong id="ringAt">--:--</strong></div>
+        </div>
+      </div>
+
+      <div class="steppers">
+        <div class="stepper">
+          <label for="hours">Saat</label>
+          <div class="stepper-row">
+            <button class="step" data-target="hours" data-delta="-1" aria-label="Saati azalt">−</button>
+            <input id="hours" type="number" inputmode="numeric" min="0" max="99" value="0">
+            <button class="step" data-target="hours" data-delta="1" aria-label="Saati artır">+</button>
+          </div>
+        </div>
+        <div class="stepper">
+          <label for="minutes">Dakika</label>
+          <div class="stepper-row">
+            <button class="step" data-target="minutes" data-delta="-5" aria-label="Dakikayı azalt">−</button>
+            <input id="minutes" type="number" inputmode="numeric" min="0" max="59" value="0">
+            <button class="step" data-target="minutes" data-delta="5" aria-label="Dakikayı artır">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="presets" role="group" aria-label="Hazır süreler">
+        <button class="chip" data-min="15">15 dk</button>
+        <button class="chip" data-min="30">30 dk</button>
+        <button class="chip" data-min="60">1 sa</button>
+        <button class="chip" data-min="120">2 sa</button>
+        <button class="chip" data-min="240">4 sa</button>
+        <button class="chip" data-min="480">8 sa</button>
+      </div>
+
+      <label class="field">
+        <span>Etiket (isteğe bağlı)</span>
+        <input id="label" type="text" maxlength="40" placeholder="ör. İlaç, Çamaşır, Toplantı">
+      </label>
+
+      <button class="primary" id="createBtn" disabled>Alarmı Kur</button>
+    </section>
+
+    <!-- Aktif alarmlar -->
+    <section class="card list" aria-labelledby="list-title">
+      <div class="list-head">
+        <h2 id="list-title">Aktif alarmlar</h2>
+        <span class="badge" id="count">0</span>
+      </div>
+      <ul id="alarms" class="alarms"></ul>
+      <div class="empty" id="empty">
+        <div class="empty-icon">🔕</div>
+        <p>Henüz alarm yok.<br>Bir süre seçip <strong>Alarmı Kur</strong>'a bas.</p>
+      </div>
+    </section>
+  </main>
+
+  <template id="alarmTpl">
+    <li class="alarm">
+      <div class="alarm-main">
+        <div class="alarm-remaining">--:--:--</div>
+        <div class="alarm-meta"><span class="alarm-label"></span> · <span class="alarm-at"></span></div>
+        <div class="progress"><div class="progress-bar"></div></div>
+      </div>
+      <button class="icon-btn delete" aria-label="Alarmı sil">✕</button>
+    </li>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
