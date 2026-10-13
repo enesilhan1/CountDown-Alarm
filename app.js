@@ -1,4 +1,4 @@
-// Aşama 2a: alarmlar kalıcı (localStorage). Ses/bildirim bir sonraki adımda.
+// Aşama 2: alarmlar kalıcı (localStorage), süre dolunca ses + titreşim + bildirim + çalma ekranı.
 
 const $ = (id) => document.getElementById(id);
 const hoursEl = $("hours");
@@ -15,6 +15,11 @@ const fmtClock = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 function fmtRemaining(ms) {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+}
+
+function fmtDuration(min) {
+  const h = Math.floor(min / 60), m = min % 60;
+  return [h && `${h} sa`, m && `${m} dk`].filter(Boolean).join(" ") || "0 dk";
 }
 
 /* ---------- Kalıcılık ---------- */
@@ -37,6 +42,85 @@ function saveAlarms() {
 }
 
 const alarms = loadAlarms();
+
+/* ---------- Ses ve titreşim ---------- */
+
+let audioCtx = null;
+let ringTimer = null;
+
+function ensureAudio() {
+  try {
+    audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch {
+    // Ses desteklenmiyor
+  }
+}
+
+// Tarayıcılar sesi ancak kullanıcı dokunduktan sonra açar
+document.addEventListener("pointerdown", ensureAudio);
+document.addEventListener("keydown", ensureAudio);
+
+function beep() {
+  if (!audioCtx || audioCtx.state !== "running") return;
+  const t = audioCtx.currentTime;
+  for (let i = 0; i < 3; i++) {
+    const start = t + i * 0.25;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "square";
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(start);
+    osc.stop(start + 0.2);
+  }
+}
+
+function startRinging() {
+  if (ringTimer) return;
+  const pulse = () => {
+    beep();
+    navigator.vibrate?.([500, 300, 500]);
+  };
+  pulse();
+  ringTimer = setInterval(pulse, 1500);
+}
+
+function stopRinging() {
+  if (!ringTimer) return;
+  clearInterval(ringTimer);
+  ringTimer = null;
+  navigator.vibrate?.(0);
+}
+
+/* ---------- Bildirim ---------- */
+
+const notified = new Set();
+
+function requestNotifyPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+function notify(alarm) {
+  if (notified.has(alarm.id)) return;
+  notified.add(alarm.id);
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const n = new Notification("⏰ " + alarm.label, {
+      body: `${fmtClock(new Date(alarm.created))}'de kurulan alarm çalıyor`,
+      tag: alarm.id,
+      requireInteraction: true,
+    });
+    n.onclick = () => window.focus();
+  } catch {
+    // Bazı mobil tarayıcılar yalnızca service worker üzerinden bildirime izin verir
+  }
+}
 
 /* ---------- Kurulum paneli ---------- */
 
@@ -88,6 +172,8 @@ document.querySelectorAll(".chip").forEach((chip) =>
 createBtn.addEventListener("click", () => {
   const total = totalMinutes();
   if (!total) return;
+  ensureAudio();
+  requestNotifyPermission();
   const now = Date.now();
   alarms.push({
     id: crypto.randomUUID(),
@@ -96,6 +182,7 @@ createBtn.addEventListener("click", () => {
     created: now,
     start: now,
     end: now + total * 60000,
+    snoozes: 0,
   });
   labelEl.value = "";
   setTotal(0);
@@ -107,6 +194,18 @@ createBtn.addEventListener("click", () => {
 function removeAlarm(id) {
   const i = alarms.findIndex((a) => a.id === id);
   if (i !== -1) alarms.splice(i, 1);
+  notified.delete(id);
+  commit();
+}
+
+function snoozeAlarm(id, minutes) {
+  const a = alarms.find((x) => x.id === id);
+  if (!a) return;
+  const now = Date.now();
+  a.start = now;
+  a.end = now + minutes * 60000;
+  a.snoozes = (a.snoozes || 0) + 1;
+  notified.delete(id);
   commit();
 }
 
@@ -125,7 +224,8 @@ function renderList() {
   for (const a of alarms) {
     const li = tpl.content.firstElementChild.cloneNode(true);
     li.dataset.id = a.id;
-    li.querySelector(".alarm-label").textContent = a.label;
+    li.querySelector(".alarm-label").textContent =
+      a.label + (a.snoozes ? ` (${a.snoozes}× ertelendi)` : "");
     li.querySelector(".alarm-at").textContent = fmtClock(new Date(a.end));
     li.querySelector(".delete").addEventListener("click", () => removeAlarm(a.id));
     ul.appendChild(li);
@@ -133,6 +233,41 @@ function renderList() {
   $("count").textContent = alarms.length;
   $("empty").hidden = alarms.length > 0;
   tick();
+}
+
+/* ---------- Çalma ekranı ---------- */
+
+const ringEl = $("ring");
+let ringingId = null;
+
+$("dismissBtn").addEventListener("click", () => ringingId && removeAlarm(ringingId));
+document.querySelectorAll(".snooze").forEach((btn) =>
+  btn.addEventListener("click", () => ringingId && snoozeAlarm(ringingId, Number(btn.dataset.min)))
+);
+
+function updateRinging(now) {
+  const due = alarms.filter((a) => a.end <= now);
+  if (!due.length) {
+    ringingId = null;
+    ringEl.hidden = true;
+    document.title = "Süre Alarmı";
+    stopRinging();
+    return;
+  }
+  const a = due[0];
+  if (ringingId !== a.id) {
+    ringingId = a.id;
+    $("ringLabel").textContent = a.label;
+    $("ringSub").textContent =
+      `${fmtClock(new Date(a.created))}'de ${fmtDuration(a.duration ?? Math.round((a.end - a.start) / 60000))} için kuruldu` +
+      (a.snoozes ? ` · ${a.snoozes}× ertelendi` : "");
+  }
+  $("ringMore").textContent = due.length > 1 ? `+${due.length - 1} alarm daha çalıyor` : "";
+  $("ringSound").hidden = audioCtx?.state === "running";
+  ringEl.hidden = false;
+  document.title = "⏰ " + a.label;
+  due.forEach(notify);
+  startRinging();
 }
 
 /* ---------- Saat döngüsü ---------- */
@@ -151,6 +286,7 @@ function tick() {
   }
   // Çalma saati önizlemesi zamanla kaysın
   if (totalMinutes()) $("ringAt").textContent = fmtClock(new Date(now + totalMinutes() * 60000));
+  updateRinging(now);
 }
 
 // Başka sekmede değişiklik olursa (örn. bilgisayarda iki pencere) senkron kal

@@ -85,6 +85,24 @@
     </section>
   </main>
 
+  <!-- Çalma ekranı -->
+  <div class="ring-overlay" id="ring" hidden role="alertdialog" aria-labelledby="ringLabel">
+    <div class="ring-card">
+      <div class="ring-icon">⏰</div>
+      <div class="ring-label" id="ringLabel">Alarm</div>
+      <div class="ring-sub" id="ringSub"></div>
+      <div class="ring-more" id="ringMore"></div>
+      <p class="ring-sound" id="ringSound">🔇 Sesi açmak için ekrana dokun</p>
+      <div class="snooze-row">
+        <span>Ertele</span>
+        <button class="snooze" data-min="5">5 dk</button>
+        <button class="snooze" data-min="10">10 dk</button>
+        <button class="snooze" data-min="15">15 dk</button>
+      </div>
+      <button class="primary" id="dismissBtn">Kapat</button>
+    </div>
+  </div>
+
   <template id="alarmTpl">
     <li class="alarm">
       <div class="alarm-main">
