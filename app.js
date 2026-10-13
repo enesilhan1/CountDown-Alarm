@@ -1,4 +1,4 @@
-// Aşama 1: yalnızca arayüz. Alarmlar bellekte tutulur, ses/bildirim sonraki aşamada.
+// Aşama 2a: alarmlar kalıcı (localStorage). Ses/bildirim bir sonraki adımda.
 
 const $ = (id) => document.getElementById(id);
 const hoursEl = $("hours");
@@ -7,8 +7,7 @@ const labelEl = $("label");
 const createBtn = $("createBtn");
 const DIAL_LEN = 2 * Math.PI * 88;
 const DIAL_MAX_MIN = 12 * 60; // kadran 12 saatte dolar
-
-const alarms = [];
+const STORAGE_KEY = "sureAlarm.alarms";
 
 const pad = (n) => String(n).padStart(2, "0");
 const fmtClock = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -17,6 +16,29 @@ function fmtRemaining(ms) {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 }
+
+/* ---------- Kalıcılık ---------- */
+
+function loadAlarms() {
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAlarms() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(alarms));
+  } catch {
+    // Gizli sekme vb. — alarmlar sadece bu oturumda kalır
+  }
+}
+
+const alarms = loadAlarms();
+
+/* ---------- Kurulum paneli ---------- */
 
 function clamp(el) {
   const max = Number(el.max);
@@ -70,14 +92,31 @@ createBtn.addEventListener("click", () => {
   alarms.push({
     id: crypto.randomUUID(),
     label: labelEl.value.trim() || "Alarm",
+    duration: total,
+    created: now,
     start: now,
     end: now + total * 60000,
   });
-  alarms.sort((a, b) => a.end - b.end);
   labelEl.value = "";
   setTotal(0);
-  renderList();
+  commit();
 });
+
+/* ---------- Alarm işlemleri ---------- */
+
+function removeAlarm(id) {
+  const i = alarms.findIndex((a) => a.id === id);
+  if (i !== -1) alarms.splice(i, 1);
+  commit();
+}
+
+function commit() {
+  alarms.sort((a, b) => a.end - b.end);
+  saveAlarms();
+  renderList();
+}
+
+/* ---------- Liste ---------- */
 
 function renderList() {
   const ul = $("alarms");
@@ -88,16 +127,15 @@ function renderList() {
     li.dataset.id = a.id;
     li.querySelector(".alarm-label").textContent = a.label;
     li.querySelector(".alarm-at").textContent = fmtClock(new Date(a.end));
-    li.querySelector(".delete").addEventListener("click", () => {
-      alarms.splice(alarms.findIndex((x) => x.id === a.id), 1);
-      renderList();
-    });
+    li.querySelector(".delete").addEventListener("click", () => removeAlarm(a.id));
     ul.appendChild(li);
   }
   $("count").textContent = alarms.length;
   $("empty").hidden = alarms.length > 0;
   tick();
 }
+
+/* ---------- Saat döngüsü ---------- */
 
 function tick() {
   const now = Date.now();
@@ -114,6 +152,16 @@ function tick() {
   // Çalma saati önizlemesi zamanla kaysın
   if (totalMinutes()) $("ringAt").textContent = fmtClock(new Date(now + totalMinutes() * 60000));
 }
+
+// Başka sekmede değişiklik olursa (örn. bilgisayarda iki pencere) senkron kal
+window.addEventListener("storage", (e) => {
+  if (e.key !== STORAGE_KEY) return;
+  alarms.splice(0, alarms.length, ...loadAlarms());
+  renderList();
+});
+
+// Arka plandan dönünce hemen güncelle (tarayıcılar arka planda zamanlayıcıyı yavaşlatır)
+document.addEventListener("visibilitychange", () => !document.hidden && tick());
 
 $("dialFill").style.strokeDasharray = DIAL_LEN;
 updateSetup();
