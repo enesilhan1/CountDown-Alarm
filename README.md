@@ -17,22 +17,32 @@ kontrol ve test edilebiliyor. İlerleyen aşamada Capacitor ile Android uygulama
 
 ## Çalıştırma
 
-Herhangi bir statik sunucu yeterli. Örneğin Python ile:
+**Tarayıcıda (geliştirme / test):**
 
 ```bash
-python -m http.server 5173
+npm run serve
 ```
 
 Ardından tarayıcıda `http://localhost:5173` adresini açın. Aynı Wi-Fi ağındaki telefondan
 `http://<bilgisayar-IP>:5173` ile erişilebilir.
 
+**Android:** Node.js ve Android Studio gerekir.
+
+```bash
+npm install
+npm run sync   # www/ içeriğini Android projesine kopyalar
+npm run open   # projeyi Android Studio'da açar
+```
+
 ## Dosyalar
 
 | Dosya | Açıklama |
 |-------|----------|
-| `index.html` | Sayfa yapısı: kurulum paneli, alarm listesi, çalma ekranı |
-| `style.css` | Koyu tema; telefonda tek sütun, geniş ekranda iki sütun |
-| `app.js` | Alarm mantığı, kayıt, ses/titreşim/bildirim |
+| `www/index.html` | Sayfa yapısı: kurulum paneli, alarm listesi, çalma ekranı |
+| `www/style.css` | Koyu tema; telefonda tek sütun, geniş ekranda iki sütun |
+| `www/app.js` | Alarm mantığı, kayıt, ses/titreşim/bildirim |
+| `capacitor.config.json` | Capacitor ayarları (uygulama kimliği, adı, web klasörü) |
+| `android/` | Capacitor'ın oluşturduğu Android Studio projesi |
 
 ## Yol haritası
 

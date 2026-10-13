@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Süre Alarmı</string>
+    <string name="title_activity_main">Süre Alarmı</string>
+    <string name="package_name">com.enesilhan.countdownalarm</string>
+    <string name="custom_url_scheme">com.enesilhan.countdownalarm</string>
+</resources>
