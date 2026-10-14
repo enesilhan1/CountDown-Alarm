@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Saat yerine süre ile kurulan Android alarm uygulaması",
+  "license": "MIT",
   "scripts": {
     "serve": "python -m http.server 5173 --bind 0.0.0.0 --directory www",
     "sync": "cap sync android",
