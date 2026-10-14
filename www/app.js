@@ -110,9 +110,26 @@ function requestNotifyPermission() {
   if (Alarm) {
     Alarm.checkPermissions()
       .then((p) => p.notifications !== "granted" && Alarm.requestPermissions())
+      .then(askFullScreenOnce)
       .catch(() => {});
   } else if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
+  }
+}
+
+// Android 14+: kilit ekranında çalma ekranının açılması için ayrı izin gerekebilir
+async function askFullScreenOnce() {
+  const KEY = "sureAlarm.fullScreenAsked";
+  try {
+    if (localStorage.getItem(KEY)) return;
+    const { granted } = await Alarm.canUseFullScreen();
+    if (granted) return;
+    localStorage.setItem(KEY, "1");
+    if (confirm("Alarm çalınca kilit ekranında tam ekran açılabilmesi için izin gerekiyor. Ayarları açayım mı?")) {
+      await Alarm.openFullScreenSettings();
+    }
+  } catch {
+    // İzin sorulamazsa alarm yine bildirimle çalar
   }
 }
 

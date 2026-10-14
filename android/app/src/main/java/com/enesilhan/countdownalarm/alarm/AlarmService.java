@@ -1,5 +1,6 @@
 package com.enesilhan.countdownalarm.alarm;
 
+import android.app.KeyguardManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -55,6 +56,13 @@ public class AlarmService extends Service {
     /** Şu an çalan alarmın kimliği (-1: çalan yok). Eklenti bunu okur. */
     static volatile int ringingNid = -1;
 
+    /**
+     * Alarm çalmaya başladığında telefon kilitli ya da ekran kapalı mıydı?
+     * Uygulama açıldığında kilit ekranı zaten örtülmüş olduğundan bunu
+     * ancak burada, çalma anında doğru ölçebiliyoruz.
+     */
+    public static volatile boolean lockedWhenRang = false;
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable timeout = this::onTimeout;
     private MediaPlayer player;
@@ -109,6 +117,9 @@ public class AlarmService extends Service {
 
     private void startRinging(AlarmStore.Item it) {
         ringingNid = it.nid;
+        KeyguardManager km = getSystemService(KeyguardManager.class);
+        PowerManager pm = getSystemService(PowerManager.class);
+        lockedWhenRang = (km != null && km.isKeyguardLocked()) || (pm != null && !pm.isInteractive());
         startForegroundCompat(buildRingingNotification(it));
         startSound();
         startVibration();
@@ -249,6 +260,8 @@ public class AlarmService extends Service {
             .setOngoing(true)
             .setAutoCancel(false)
             .setContentIntent(openAppIntent(it.nid))
+            // Ekran kapalı/kilitliyken çalma ekranını doğrudan aç
+            .setFullScreenIntent(openAppIntent(it.nid), true)
             .addAction(0, "Ertele · " + SNOOZE_MINUTES + " dk", serviceIntent(ACTION_SNOOZE, it.nid))
             .addAction(0, "Kapat", serviceIntent(ACTION_DISMISS, it.nid))
             .build();

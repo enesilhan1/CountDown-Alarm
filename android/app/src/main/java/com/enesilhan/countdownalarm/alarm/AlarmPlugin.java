@@ -1,7 +1,13 @@
 package com.enesilhan.countdownalarm.alarm;
 
 import android.Manifest;
+import android.app.NotificationManager;
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+
+import com.enesilhan.countdownalarm.MainActivity;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -35,7 +41,13 @@ public class AlarmPlugin extends Plugin {
     /** Bildirimden Ertele/Kapat yapıldı; uygulama açıksa web tarafı hemen senkronlansın. */
     static void emitAction() {
         AlarmPlugin p = instance.get();
-        if (p != null) p.notifyListeners("alarmAction", new JSObject());
+        if (p == null) return;
+        p.releaseLockScreen();
+        p.notifyListeners("alarmAction", new JSObject());
+    }
+
+    private void releaseLockScreen() {
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).releaseLockScreen();
     }
 
     @PluginMethod
@@ -71,6 +83,28 @@ public class AlarmPlugin extends Plugin {
                 .setAction(AlarmService.ACTION_STOP)
                 .putExtra(AlarmService.EXTRA_NID, nid);
             getContext().startService(stop);
+            releaseLockScreen();
+        }
+        call.resolve();
+    }
+
+    /** Android 14+ tam ekran bildirim izni (kilit ekranında çalma ekranını açmak için). */
+    @PluginMethod
+    public void canUseFullScreen(PluginCall call) {
+        boolean granted = Build.VERSION.SDK_INT < 34
+            || getContext().getSystemService(NotificationManager.class).canUseFullScreenIntent();
+        JSObject ret = new JSObject();
+        ret.put("granted", granted);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void openFullScreenSettings(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= 34) {
+            Intent i = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                Uri.parse("package:" + getContext().getPackageName()))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
         }
         call.resolve();
     }
