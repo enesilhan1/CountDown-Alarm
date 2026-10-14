@@ -1,4 +1,4 @@
-// Aşama 2: alarmlar kalıcı (localStorage), süre dolunca ses + titreşim + bildirim + çalma ekranı.
+// Aşama 3: Android'de alarmlar sisteme kurulur; tarayıcıda ses + titreşim + bildirim + çalma ekranı.
 
 const $ = (id) => document.getElementById(id);
 const hoursEl = $("hours");
@@ -42,6 +42,9 @@ function saveAlarms() {
 }
 
 const alarms = loadAlarms();
+// Eski kayıtlara sistem bildirimi için sayısal kimlik ver
+alarms.forEach((a) => (a.nid ??= newNid()));
+saveAlarms();
 
 /* ---------- Ses ve titreşim ---------- */
 
@@ -101,7 +104,11 @@ function stopRinging() {
 const notified = new Set();
 
 function requestNotifyPermission() {
-  if ("Notification" in window && Notification.permission === "default") {
+  if (LN) {
+    LN.checkPermissions()
+      .then((p) => p.display !== "granted" && LN.requestPermissions())
+      .catch(() => {});
+  } else if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
   }
 }
@@ -109,7 +116,8 @@ function requestNotifyPermission() {
 function notify(alarm) {
   if (notified.has(alarm.id)) return;
   notified.add(alarm.id);
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  // Android'de bildirimi sistem zaten zamanında gösterdi
+  if (LN || !("Notification" in window) || Notification.permission !== "granted") return;
   try {
     const n = new Notification("⏰ " + alarm.label, {
       body: `${fmtClock(new Date(alarm.created))}'de kurulan alarm çalıyor`,
@@ -120,6 +128,82 @@ function notify(alarm) {
   } catch {
     // Bazı mobil tarayıcılar yalnızca service worker üzerinden bildirime izin verir
   }
+}
+
+/* ---------- Android yerel alarm ---------- */
+
+// Uygulama Android'de (Capacitor içinde) çalışıyorsa alarmlar sistemin
+// AlarmManager'ına kurulur; uygulama kapalı ya da telefon kilitliyken de çalar.
+const LN = window.Capacitor?.isNativePlatform?.()
+  ? window.Capacitor.Plugins.LocalNotifications
+  : null;
+const CHANNEL_ID = "alarm";
+
+function newNid() {
+  return Math.floor(Math.random() * 2 ** 31);
+}
+
+async function initNative() {
+  if (!LN) return;
+  try {
+    await LN.createChannel({
+      id: CHANNEL_ID,
+      name: "Alarmlar",
+      description: "Süresi dolan alarmlar",
+      importance: 5, // en yüksek: sesli ve ekranın üstünde açılır
+      visibility: 1, // kilit ekranında görünür
+      vibration: true,
+      lights: true,
+    });
+    await LN.registerActionTypes({
+      types: [{
+        id: "ALARM",
+        actions: [
+          { id: "snooze", title: "Ertele · 5 dk" },
+          { id: "dismiss", title: "Kapat", destructive: true },
+        ],
+      }],
+    });
+    await LN.addListener("localNotificationActionPerformed", ({ actionId, notification }) => {
+      const id = notification.extra?.alarmId;
+      if (actionId === "snooze") snoozeAlarm(id, 5);
+      else if (actionId === "dismiss") removeAlarm(id);
+      // Bildirime dokunulursa uygulama açılır ve çalma ekranı zaten gösterilir
+    });
+    // Uygulama açılışında gelecekteki tüm alarmların sistemde kurulu olduğundan emin ol
+    alarms.filter((a) => a.end > Date.now()).forEach(scheduleNative);
+  } catch (e) {
+    console.warn("Yerel alarm hazırlanamadı", e);
+  }
+}
+
+async function scheduleNative(a) {
+  if (!LN) return;
+  try {
+    await LN.schedule({
+      notifications: [{
+        id: a.nid,
+        title: "⏰ " + a.label,
+        body: `${fmtClock(new Date(a.created))}'de kurulan alarm çalıyor`,
+        channelId: CHANNEL_ID,
+        actionTypeId: "ALARM",
+        extra: { alarmId: a.id },
+        schedule: { at: new Date(a.end), allowWhileIdle: true },
+      }],
+    });
+  } catch (e) {
+    console.warn("Alarm sisteme kurulamadı", e);
+  }
+}
+
+// Hem bekleyen alarmı iptal et hem de bildirim çubuğunda duranı kaldır
+function cancelNative(a) {
+  if (!LN || a?.nid == null) return Promise.resolve();
+  const ref = { notifications: [{ id: a.nid, title: "", body: "" }] };
+  return Promise.all([
+    LN.cancel(ref).catch(() => {}),
+    LN.removeDeliveredNotifications(ref).catch(() => {}),
+  ]);
 }
 
 /* ---------- Kurulum paneli ---------- */
@@ -175,15 +259,18 @@ createBtn.addEventListener("click", () => {
   ensureAudio();
   requestNotifyPermission();
   const now = Date.now();
-  alarms.push({
+  const alarm = {
     id: crypto.randomUUID(),
+    nid: newNid(),
     label: labelEl.value.trim() || "Alarm",
     duration: total,
     created: now,
     start: now,
     end: now + total * 60000,
     snoozes: 0,
-  });
+  };
+  alarms.push(alarm);
+  scheduleNative(alarm);
   labelEl.value = "";
   setTotal(0);
   commit();
@@ -193,7 +280,7 @@ createBtn.addEventListener("click", () => {
 
 function removeAlarm(id) {
   const i = alarms.findIndex((a) => a.id === id);
-  if (i !== -1) alarms.splice(i, 1);
+  if (i !== -1) cancelNative(alarms.splice(i, 1)[0]);
   notified.delete(id);
   commit();
 }
@@ -206,6 +293,8 @@ function snoozeAlarm(id, minutes) {
   a.end = now + minutes * 60000;
   a.snoozes = (a.snoozes || 0) + 1;
   notified.delete(id);
+  // Çalan bildirimi kaldır, yeni süreyle tekrar kur
+  cancelNative(a).then(() => scheduleNative(a));
   commit();
 }
 
@@ -302,4 +391,5 @@ document.addEventListener("visibilitychange", () => !document.hidden && tick());
 $("dialFill").style.strokeDasharray = DIAL_LEN;
 updateSetup();
 renderList();
+initNative();
 setInterval(tick, 1000);

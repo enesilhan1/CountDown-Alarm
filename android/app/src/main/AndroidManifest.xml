@@ -38,4 +38,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Alarm uygulaması: tam zamanında çalma izni (Android 13+ otomatik verilir) -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Çalma ekranında titreşim -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>
