@@ -4,8 +4,9 @@ Android için tasarlanan, **saat yerine süre ile** kurulan bir alarm uygulamas�
 Klasik alarmlarda "07:30'da çal" dersiniz; burada "**2 saat 15 dakika sonra** çal" dersiniz.
 
 Arayüz bir web uygulaması olarak yazıldı; bilgisayardan tarayıcıda test edilebiliyor.
-Capacitor ile Android uygulamasına (APK) dönüştürülüyor ve Android'de alarmlar sistemin
-alarm servisine kuruluyor, yani uygulama kapalıyken veya telefon kilitliyken de çalıyor.
+Capacitor ile Android uygulamasına (APK) dönüştürülüyor. Android'de alarmlar yerel bir
+alarm servisiyle çalıyor: uygulama kapalıyken veya telefon kilitliyken de, gerçek bir alarm
+saati gibi kapatılana kadar çalar.
 
 ## Özellikler
 
@@ -15,8 +16,14 @@ alarm servisine kuruluyor, yani uygulama kapalıyken veya telefon kilitliyken de
 - Alarmlar tarayıcıda saklanır; sayfa yenilense de kaybolmaz
 - Süre dolunca tam ekran çalma ekranı, ses, titreşim ve bildirim
 - Ertele (5 / 10 / 15 dk) ve Kapat
-- **Android:** tam zamanında çalan sistem alarmı (AlarmManager), bildirimden Ertele / Kapat,
-  telefon yeniden başlasa da alarmlar korunur
+- **Android:**
+  - Alarm saati yöntemiyle kurulum (`setAlarmClock`): güç tasarrufunda ertelenmez,
+    durum çubuğunda alarm simgesi
+  - Telefonun alarm sesi, alarm ses seviyesinde döngüde çalar ve titreşir; yanıt
+    verilmezse 10 dk sonra susar
+  - Ekran kapalı/kilitliyken çalma ekranı kilit ekranının üstünde tam ekran açılır
+  - Bildirimden Ertele / Kapat (uygulama kapalıyken de)
+  - Telefon yeniden başlasa da alarmlar korunur
 
 ## Çalıştırma
 
@@ -54,11 +61,12 @@ cd android
 | `www/style.css` | Koyu tema; telefonda tek sütun, geniş ekranda iki sütun |
 | `www/app.js` | Alarm mantığı, kayıt, ses/titreşim/bildirim |
 | `capacitor.config.json` | Capacitor ayarları (uygulama kimliği, adı, web klasörü) |
-| `android/` | Capacitor'ın oluşturduğu Android Studio projesi |
+| `android/` | Android Studio projesi |
+| `android/app/src/main/java/.../alarm/` | Yerel alarm: zamanlayıcı, çalma servisi, JS köprüsü (`Alarm` eklentisi) |
 
 ## Yol haritası
 
 - [x] Aşama 1 – Arayüz
 - [x] Aşama 2 – Kalıcı alarmlar ve çalma ekranı
 - [x] Aşama 3 – Capacitor ile Android uygulaması, uygulama kapalıyken de çalan sistem alarmı
-- [ ] Aşama 4 – Kilit ekranında tam ekran çalma, sürekli çalan alarm sesi, uygulama simgesi
+- [x] Aşama 4 – Sürekli çalan alarm sesi, kilit ekranında tam ekran çalma, uygulama simgesi
