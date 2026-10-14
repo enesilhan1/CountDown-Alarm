@@ -97,6 +97,15 @@ h2 { font-size: 1rem; margin: 0 0 16px; color: var(--muted); font-weight: 600; l
 .step:active { background: #ffffff10; }
 
 /* Hazır süreler */
+.presets-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: .8rem; color: var(--muted); margin-bottom: 8px; min-height: 24px;
+}
+.link-btn {
+  border: 0; background: none; color: var(--accent); font-size: .85rem; padding: 4px 2px;
+}
+.link-btn:hover { text-decoration: underline; }
+.link-btn[hidden] { display: none; }
 .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .chip {
   border: 1px solid #ffffff1a; background: transparent; border-radius: 999px;
@@ -201,3 +210,25 @@ h2 { font-size: 1rem; margin: 0 0 16px; color: var(--muted); font-weight: 600; l
 }
 .sound-change:hover { border-color: var(--accent); }
 .alarm-sound { color: var(--accent-2); }
+
+/* Kayıtlı hazır süreler */
+.chip-custom {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  border-color: #7c6cff66; background: #7c6cff14;
+}
+.chip-custom .chip-label {
+  max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chip-custom .chip-dur { color: var(--muted); }
+.chip-custom.active .chip-dur { color: #ffffffcc; }
+.chip-custom .chip-x { display: none; color: var(--danger); font-weight: 700; }
+.chip-add { border-style: dashed; color: var(--accent); }
+.chip-add:disabled { opacity: .4; cursor: not-allowed; }
+.chip-add:disabled:hover { border-color: #ffffff1a; }
+.chip-add.saved { color: var(--accent-2); border-color: var(--accent-2); border-style: solid; }
+.chip.flash { animation: pop .35s ease; }
+
+/* Düzenleme modu: kayıtlılarda × görünür, diğerleri soluklaşır */
+.presets.editing .chip-custom { border-color: var(--danger); background: #ff6b7d14; }
+.presets.editing .chip-custom .chip-x { display: inline; }
+.presets.editing .chip:not(.chip-custom) { opacity: .35; pointer-events: none; }

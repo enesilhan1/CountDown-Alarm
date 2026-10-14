@@ -11,6 +11,8 @@ saati gibi kapatılana kadar çalar.
 ## Özellikler
 
 - Saat / dakika ayarı ve hazır süreler (15 dk – 8 sa)
+- Kendi hazır sürelerini kaydetme: süre + etiket (+ alarm sesi) tek dokunuşla geri gelir;
+  Düzenle ile silinir (en fazla 12)
 - Kurulmadan önce alarmın saat kaçta çalacağının önizlemesi
 - Etiketli alarmlar, canlı geri sayım ve ilerleme çubuğu
 - Alarmlar tarayıcıda saklanır; sayfa yenilense de kaybolmaz

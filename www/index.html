@@ -54,13 +54,19 @@
         </div>
       </div>
 
-      <div class="presets" role="group" aria-label="Hazır süreler">
+      <div class="presets-head">
+        <span>Hazır süreler</span>
+        <button class="link-btn" id="presetEdit" type="button" hidden>Düzenle</button>
+      </div>
+      <div class="presets" id="presets" role="group" aria-label="Hazır süreler">
+        <!-- Kullanıcının kaydettiği süreler buraya, yerleşiklerin önüne eklenir -->
         <button class="chip" data-min="15">15 dk</button>
         <button class="chip" data-min="30">30 dk</button>
         <button class="chip" data-min="60">1 sa</button>
         <button class="chip" data-min="120">2 sa</button>
         <button class="chip" data-min="240">4 sa</button>
         <button class="chip" data-min="480">8 sa</button>
+        <button class="chip chip-add" id="presetSave" type="button" disabled title="Şu anki süreyi, etiketi ve sesi kaydet">＋ Kaydet</button>
       </div>
 
       <label class="field">

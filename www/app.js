@@ -361,8 +361,18 @@ function updateSetup() {
   $("ringAt").textContent = total ? fmtClock(new Date(Date.now() + total * 60000)) : "--:--";
   $("dialFill").style.strokeDashoffset = DIAL_LEN * (1 - Math.min(total, DIAL_MAX_MIN) / DIAL_MAX_MIN);
   createBtn.disabled = total === 0;
-  document.querySelectorAll(".chip").forEach((c) =>
-    c.classList.toggle("active", Number(c.dataset.min) === total)
+  $("presetSave").disabled = total === 0;
+  // Kayıtlı süre: süre ve etiket aynıysa seçili; yerleşikler yalnızca o zaman değilse
+  const label = labelEl.value.trim();
+  let customActive = false;
+  document.querySelectorAll(".chip-custom").forEach((c) => {
+    const p = presets.find((x) => x.id === c.dataset.id);
+    const on = !!p && p.minutes === total && (p.label || "") === label;
+    c.classList.toggle("active", on);
+    customActive ||= on;
+  });
+  document.querySelectorAll(".chip[data-min]").forEach((c) =>
+    c.classList.toggle("active", !customActive && Number(c.dataset.min) === total)
   );
 }
 
@@ -380,17 +390,139 @@ document.querySelectorAll(".step").forEach((btn) =>
   })
 );
 
-document.querySelectorAll(".chip").forEach((chip) =>
+document.querySelectorAll(".chip[data-min]").forEach((chip) =>
   chip.addEventListener("click", () => setTotal(Number(chip.dataset.min)))
 );
 
-[hoursEl, minutesEl].forEach((el) => el.addEventListener("input", updateSetup));
+[hoursEl, minutesEl, labelEl].forEach((el) => el.addEventListener("input", updateSetup));
+
+/* ---------- Kayıtlı hazır süreler ---------- */
+
+// Kullanıcının kaydettiği süre + etiket (+ Android'de ses) kombinasyonları
+const PRESETS_KEY = "sureAlarm.presets";
+const MAX_PRESETS = 12;
+const presets = loadPresets();
+let editingPresets = false;
+
+function loadPresets() {
+  try {
+    const data = JSON.parse(localStorage.getItem(PRESETS_KEY));
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePresets() {
+  try {
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+  } catch {
+    // Kaydedilemezse yalnızca bu oturumda kalır
+  }
+}
+
+function renderPresets() {
+  const box = $("presets");
+  box.querySelectorAll(".chip-custom").forEach((c) => c.remove());
+  const firstBuiltin = box.querySelector(".chip[data-min]");
+  for (const p of presets) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip chip-custom";
+    chip.dataset.id = p.id;
+    if (p.soundName) chip.title = `🎵 ${p.soundName}`;
+
+    const name = document.createElement("span");
+    name.className = "chip-label";
+    name.textContent = p.label || fmtDuration(p.minutes);
+    chip.append(name);
+    if (p.label) {
+      const dur = document.createElement("span");
+      dur.className = "chip-dur";
+      dur.textContent = fmtDuration(p.minutes);
+      chip.append(dur);
+    }
+    if (p.soundName) chip.append("🎵");
+    const x = document.createElement("span");
+    x.className = "chip-x";
+    x.textContent = "×";
+    chip.append(x);
+    chip.setAttribute("aria-label",
+      [p.label, fmtDuration(p.minutes), p.soundName && `ses: ${p.soundName}`].filter(Boolean).join(", "));
+
+    chip.addEventListener("click", () => (editingPresets ? deletePreset(p.id) : applyPreset(p)));
+    box.insertBefore(chip, firstBuiltin);
+  }
+  $("presetEdit").hidden = presets.length === 0;
+  if (!presets.length) setEditing(false);
+  updateSetup();
+}
+
+function applyPreset(p) {
+  labelEl.value = p.label || "";
+  if (p.sound) {
+    sound = { uri: p.sound, name: p.soundName };
+    saveSound();
+    renderSound();
+  }
+  setTotal(p.minutes);
+}
+
+function deletePreset(id) {
+  const i = presets.findIndex((p) => p.id === id);
+  if (i !== -1) presets.splice(i, 1);
+  savePresets();
+  renderPresets();
+}
+
+function setEditing(on) {
+  editingPresets = on;
+  $("presets").classList.toggle("editing", on);
+  $("presetEdit").textContent = on ? "Bitti" : "Düzenle";
+}
+
+$("presetEdit").addEventListener("click", () => setEditing(!editingPresets));
+
+$("presetSave").addEventListener("click", () => {
+  const minutes = totalMinutes();
+  if (!minutes) return;
+  const label = labelEl.value.trim();
+  // Tarayıcıda seçilen dosya sayfa yenilenince kaybolur; sesi yalnızca Android'de kaydet
+  const keep = Alarm && sound ? sound : null;
+  // Aynı süre + etiket zaten varsa yenisini ekleme, sesini güncelle
+  let p = presets.find((x) => x.minutes === minutes && (x.label || "") === label);
+  if (p) {
+    p.sound = keep?.uri || "";
+    p.soundName = keep?.name || "";
+  } else {
+    if (presets.length >= MAX_PRESETS) {
+      alert(`En fazla ${MAX_PRESETS} hazır süre kaydedebilirsin. Önce Düzenle ile birini sil.`);
+      return;
+    }
+    p = { id: crypto.randomUUID(), minutes, label, sound: keep?.uri || "", soundName: keep?.name || "" };
+    presets.push(p);
+  }
+  savePresets();
+  setEditing(false);
+  renderPresets();
+
+  $("presets").querySelector(`.chip-custom[data-id="${p.id}"]`)?.classList.add("flash");
+  const btn = $("presetSave");
+  btn.textContent = "✓ Kaydedildi";
+  btn.classList.add("saved");
+  clearTimeout(btn.resetTimer);
+  btn.resetTimer = setTimeout(() => {
+    btn.textContent = "＋ Kaydet";
+    btn.classList.remove("saved");
+  }, 1500);
+});
 
 createBtn.addEventListener("click", () => {
   const total = totalMinutes();
   if (!total) return;
   ensureAudio();
   stopPreview();
+  setEditing(false);
   requestNotifyPermission();
   const now = Date.now();
   const alarm = {
@@ -528,7 +660,7 @@ window.addEventListener("storage", (e) => {
 document.addEventListener("visibilitychange", () => !document.hidden && tick());
 
 $("dialFill").style.strokeDasharray = DIAL_LEN;
-updateSetup();
+renderPresets(); // updateSetup'ı da çağırır
 renderSound();
 renderList();
 initNative();
