@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bildirim çubuğu simgesi: tek renk kum saati -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <group android:translateX="-30" android:translateY="-30">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M37,30h34a2.5,2.5 0,0 1,0 5h-34a2.5,2.5 0,0 1,0 -5z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M37,73h34a2.5,2.5 0,0 1,0 5h-34a2.5,2.5 0,0 1,0 -5z" />
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="3.5"
+            android:strokeLineJoin="round"
+            android:pathData="M40,35h28v5c0,8 -8,11.5 -11.5,14c3.5,2.5 11.5,6 11.5,14v5h-28v-5c0,-8 8,-11.5 11.5,-14c-3.5,-2.5 -11.5,-6 -11.5,-14z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M46,44h16c-1.5,3.5 -5,6 -8,8.5c-3,-2.5 -6.5,-5 -8,-8.5z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M43,71c0,-5 7,-8 11,-9.5c4,1.5 11,4.5 11,9.5z" />
+    </group>
+</vector>

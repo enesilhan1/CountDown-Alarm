@@ -1,5 +1,6 @@
 {
   "appId": "com.enesilhan.countdownalarm",
   "appName": "Süre Alarmı",
-  "webDir": "www"
+  "webDir": "www",
+  "backgroundColor": "#0f1220"
 }

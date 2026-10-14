@@ -26,6 +26,7 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import com.enesilhan.countdownalarm.MainActivity;
+import com.enesilhan.countdownalarm.R;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -250,7 +251,7 @@ public class AlarmService extends Service {
     private Notification buildRingingNotification(AlarmStore.Item it) {
         ensureChannels();
         return new NotificationCompat.Builder(this, CHANNEL_RING)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setSmallIcon(R.drawable.ic_stat_alarm)
             .setColor(0xFF7C6CFF)
             .setContentTitle("⏰ " + it.label)
             .setContentText(clock(it.created) + "'de kurulan alarm çalıyor")
@@ -270,7 +271,7 @@ public class AlarmService extends Service {
     private Notification buildPlaceholder() {
         ensureChannels();
         return new NotificationCompat.Builder(this, CHANNEL_RING)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setSmallIcon(R.drawable.ic_stat_alarm)
             .setContentTitle("Süre Alarmı")
             .build();
     }
@@ -278,7 +279,7 @@ public class AlarmService extends Service {
     private void showMissed(AlarmStore.Item it) {
         ensureChannels();
         Notification n = new NotificationCompat.Builder(this, CHANNEL_MISSED)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setSmallIcon(R.drawable.ic_stat_alarm)
             .setColor(0xFF7C6CFF)
             .setContentTitle("Yanıtlanmayan alarm: " + it.label)
             .setContentText(clock(it.at) + "'de çaldı")
