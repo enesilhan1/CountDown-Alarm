@@ -33,6 +33,22 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- Alarm zamanı gelince ve telefon açılınca tetiklenir -->
+        <receiver
+            android:name=".alarm.AlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Alarm sesini çalan ön plan servisi -->
+        <service
+            android:name=".alarm.AlarmService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 
     <!-- Permissions -->
@@ -40,6 +56,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Alarm uygulaması: tam zamanında çalma izni (Android 13+ otomatik verilir) -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <!-- Çalma ekranında titreşim -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <!-- Titreşim, bildirim ve açılışta alarmları yeniden kurma -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Alarm sesini çalan servis -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 </manifest>

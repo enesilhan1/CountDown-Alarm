@@ -1,4 +1,5 @@
-// Aşama 3: Android'de alarmlar sisteme kurulur; tarayıcıda ses + titreşim + bildirim + çalma ekranı.
+// Android'de alarmlar yerel Alarm eklentisiyle çalar (www dışı: android/.../alarm/).
+// Tarayıcıda ses + titreşim + bildirim + çalma ekranı bu dosyada.
 
 const $ = (id) => document.getElementById(id);
 const hoursEl = $("hours");
@@ -83,7 +84,8 @@ function beep() {
 }
 
 function startRinging() {
-  if (ringTimer) return;
+  // Android'de sesi ve titreşimi yerel servis çalıyor
+  if (ringTimer || Alarm) return;
   const pulse = () => {
     beep();
     // Tarayıcı, kullanıcı ekrana dokunmadan titreşime izin vermiyor
@@ -105,9 +107,9 @@ function stopRinging() {
 const notified = new Set();
 
 function requestNotifyPermission() {
-  if (LN) {
-    LN.checkPermissions()
-      .then((p) => p.display !== "granted" && LN.requestPermissions())
+  if (Alarm) {
+    Alarm.checkPermissions()
+      .then((p) => p.notifications !== "granted" && Alarm.requestPermissions())
       .catch(() => {});
   } else if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
@@ -117,8 +119,8 @@ function requestNotifyPermission() {
 function notify(alarm) {
   if (notified.has(alarm.id)) return;
   notified.add(alarm.id);
-  // Android'de bildirimi sistem zaten zamanında gösterdi
-  if (LN || !("Notification" in window) || Notification.permission !== "granted") return;
+  // Android'de bildirimi yerel servis gösteriyor
+  if (Alarm || !("Notification" in window) || Notification.permission !== "granted") return;
   try {
     const n = new Notification("⏰ " + alarm.label, {
       body: `${fmtClock(new Date(alarm.created))}'de kurulan alarm çalıyor`,
@@ -133,78 +135,68 @@ function notify(alarm) {
 
 /* ---------- Android yerel alarm ---------- */
 
-// Uygulama Android'de (Capacitor içinde) çalışıyorsa alarmlar sistemin
-// AlarmManager'ına kurulur; uygulama kapalı ya da telefon kilitliyken de çalar.
-const LN = window.Capacitor?.isNativePlatform?.()
-  ? window.Capacitor.Plugins.LocalNotifications
-  : null;
-const CHANNEL_ID = "alarm";
+// Uygulama Android'de (Capacitor içinde) çalışıyorsa alarmlar yerel Alarm
+// eklentisiyle AlarmManager'a kurulur. Süre dolunca yerel servis alarm sesini
+// döngüde çalar; uygulama kapalı ya da telefon kilitliyken de.
+const Alarm = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins.Alarm : null;
 
 function newNid() {
   return Math.floor(Math.random() * 2 ** 31);
 }
 
 async function initNative() {
-  if (!LN) return;
+  if (!Alarm) return;
   try {
-    await LN.createChannel({
-      id: CHANNEL_ID,
-      name: "Alarmlar",
-      description: "Süresi dolan alarmlar",
-      importance: 5, // en yüksek: sesli ve ekranın üstünde açılır
-      visibility: 1, // kilit ekranında görünür
-      vibration: true,
-      lights: true,
-    });
-    await LN.registerActionTypes({
-      types: [{
-        id: "ALARM",
-        actions: [
-          { id: "snooze", title: "Ertele · 5 dk" },
-          { id: "dismiss", title: "Kapat", destructive: true },
-        ],
-      }],
-    });
-    await LN.addListener("localNotificationActionPerformed", ({ actionId, notification }) => {
-      const id = notification.extra?.alarmId;
-      if (actionId === "snooze") snoozeAlarm(id, 5);
-      else if (actionId === "dismiss") removeAlarm(id);
-      // Bildirime dokunulursa uygulama açılır ve çalma ekranı zaten gösterilir
-    });
-    // Uygulama açılışında gelecekteki tüm alarmların sistemde kurulu olduğundan emin ol
+    await syncNative();
+    await Alarm.addListener("alarmAction", syncNative);
+    document.addEventListener("visibilitychange", () => !document.hidden && syncNative());
+    // Gelecekteki tüm alarmların sistemde kurulu olduğundan emin ol
     alarms.filter((a) => a.end > Date.now()).forEach(scheduleNative);
   } catch (e) {
     console.warn("Yerel alarm hazırlanamadı", e);
   }
 }
 
-async function scheduleNative(a) {
-  if (!LN) return;
+// Uygulama kapalıyken bildirimden yapılan Ertele/Kapat işlemlerini listeye uygula
+async function syncNative() {
   try {
-    await LN.schedule({
-      notifications: [{
-        id: a.nid,
-        title: "⏰ " + a.label,
-        body: `${fmtClock(new Date(a.created))}'de kurulan alarm çalıyor`,
-        channelId: CHANNEL_ID,
-        actionTypeId: "ALARM",
-        extra: { alarmId: a.id },
-        schedule: { at: new Date(a.end), allowWhileIdle: true },
-      }],
-    });
+    const { actions } = await Alarm.takePendingActions();
+    let changed = false;
+    for (const act of actions) {
+      const i = alarms.findIndex((a) => a.id === act.alarmId);
+      if (i === -1) continue;
+      if (act.type === "dismiss") {
+        alarms.splice(i, 1);
+      } else if (act.type === "snooze") {
+        const a = alarms[i];
+        a.start = act.time;
+        a.end = act.at;
+        a.snoozes = (a.snoozes || 0) + 1;
+        notified.delete(a.id);
+      }
+      changed = true;
+    }
+    if (changed) commit();
   } catch (e) {
-    console.warn("Alarm sisteme kurulamadı", e);
+    console.warn("Alarm işlemleri alınamadı", e);
   }
 }
 
-// Hem bekleyen alarmı iptal et hem de bildirim çubuğunda duranı kaldır
+function scheduleNative(a) {
+  if (!Alarm) return Promise.resolve();
+  return Alarm.schedule({
+    nid: a.nid,
+    alarmId: a.id,
+    label: a.label,
+    at: a.end,
+    created: a.created,
+  }).catch((e) => console.warn("Alarm sisteme kurulamadı", e));
+}
+
+// Bekleyen alarmı iptal eder; çalıyorsa susturur
 function cancelNative(a) {
-  if (!LN || a?.nid == null) return Promise.resolve();
-  const ref = { notifications: [{ id: a.nid, title: "", body: "" }] };
-  return Promise.all([
-    LN.cancel(ref).catch(() => {}),
-    LN.removeDeliveredNotifications(ref).catch(() => {}),
-  ]);
+  if (!Alarm || a?.nid == null) return Promise.resolve();
+  return Alarm.cancel({ nid: a.nid }).catch(() => {});
 }
 
 /* ---------- Kurulum paneli ---------- */
@@ -355,7 +347,7 @@ function updateRinging(now) {
       (a.snoozes ? ` · ${a.snoozes}× ertelendi` : "");
   }
   $("ringMore").textContent = due.length > 1 ? `+${due.length - 1} alarm daha çalıyor` : "";
-  $("ringSound").hidden = audioCtx?.state === "running";
+  $("ringSound").hidden = !!Alarm || audioCtx?.state === "running";
   ringEl.hidden = false;
   document.title = "⏰ " + a.label;
   due.forEach(notify);

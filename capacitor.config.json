@@ -1,10 +1,5 @@
 {
   "appId": "com.enesilhan.countdownalarm",
   "appName": "Süre Alarmı",
-  "webDir": "www",
-  "plugins": {
-    "LocalNotifications": {
-      "iconColor": "#7C6CFF"
-    }
-  }
+  "webDir": "www"
 }
