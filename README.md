@@ -18,6 +18,8 @@ saati gibi kapatılana kadar çalar.
 - Alarmlar tarayıcıda saklanır; sayfa yenilense de kaybolmaz
 - Süre dolunca tam ekran çalma ekranı, ses, titreşim ve bildirim
 - Ertele (5 / 10 / 15 dk) ve Kapat
+- İsteğe bağlı tekrarlayan alarm (🔁): kapatılınca aynı süre sonra yeniden kurulur, "Tekrarı bitir"
+  ile durdurulur. Aralık asıl çalma zamanından hesaplanır; erteleme ya da geç kapatma saatleri kaydırmaz
 - Alarm sesi seçimi: telefondaki ses dosyalarından seçilir, dinlenebilir; her alarm kendi
   sesini saklar. Dosya silinirse varsayılan alarm sesi çalar
 - **Android:**

@@ -101,6 +101,7 @@ public class PresetWidgetProvider extends AppWidgetProvider {
 
         if (active == null) {
             String status = p.label.isEmpty() ? "Dokun, başlasın" : WidgetStore.durationText(p.minutes);
+            if (p.repeat) status += "  ·  🔁";
             if (!p.soundName.isEmpty()) status += "  ·  🎵";
             v.setTextViewText(R.id.widget_status, status);
             v.setTextColor(R.id.widget_status, COLOR_MUTED);
@@ -163,6 +164,9 @@ public class PresetWidgetProvider extends AppWidgetProvider {
         it.sound = p.sound;
         it.soundName = p.soundName;
         it.presetId = p.id;
+        it.repeat = p.repeat;
+        it.durationMin = p.minutes;
+        it.slot = it.at;
         AlarmStore.put(c, it);
         AlarmScheduler.schedule(c, it);
         // Uygulama açılınca (ya da açıksa hemen) listesine eklesin

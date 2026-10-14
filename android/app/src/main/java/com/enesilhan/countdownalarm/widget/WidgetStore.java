@@ -29,6 +29,7 @@ public final class WidgetStore {
         public String label;
         public String sound;
         public String soundName;
+        public boolean repeat;
 
         /** Widget başlığı: etiket, yoksa süre. */
         public String title() {
@@ -64,6 +65,7 @@ public final class WidgetStore {
                 p.label = o.optString("label", "");
                 p.sound = o.optString("sound", "");
                 p.soundName = o.optString("soundName", "");
+                p.repeat = o.optBoolean("repeat", false);
                 list.add(p);
             }
         } catch (JSONException ignored) {

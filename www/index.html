@@ -86,6 +86,14 @@
         <input id="soundFile" type="file" accept="audio/*" hidden>
       </div>
 
+      <label class="toggle-row" for="repeat">
+        <span class="toggle-text">
+          <span class="toggle-title">🔁 Tekrarla</span>
+          <span class="toggle-sub" id="repeatSub">Kapatılana kadar aynı süre arayla çalar</span>
+        </span>
+        <input id="repeat" type="checkbox" class="switch">
+      </label>
+
       <button class="primary" id="createBtn" disabled>Alarmı Kur</button>
     </section>
 
@@ -117,7 +125,9 @@
         <button class="snooze" data-min="10">10 dk</button>
         <button class="snooze" data-min="15">15 dk</button>
       </div>
+      <p class="ring-repeat" id="ringRepeat" hidden></p>
       <button class="primary" id="dismissBtn">Kapat</button>
+      <button class="link-btn ring-stop" id="stopRepeatBtn" type="button" hidden>Tekrarı bitir</button>
     </div>
   </div>
 

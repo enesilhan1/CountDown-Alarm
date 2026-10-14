@@ -88,6 +88,9 @@ public class AlarmPlugin extends Plugin {
         it.sound = call.getString("sound", "");
         it.soundName = call.getString("soundName", "");
         it.presetId = call.getString("presetId", "");
+        it.repeat = Boolean.TRUE.equals(call.getBoolean("repeat", false));
+        it.durationMin = call.getInt("duration", 0);
+        it.slot = call.getLong("slot", at);
         AlarmStore.put(getContext(), it);
         AlarmScheduler.schedule(getContext(), it);
         call.resolve();

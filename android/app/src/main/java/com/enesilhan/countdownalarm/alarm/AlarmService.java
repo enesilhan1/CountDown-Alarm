@@ -28,6 +28,7 @@ import androidx.core.app.NotificationCompat;
 import com.enesilhan.countdownalarm.MainActivity;
 import com.enesilhan.countdownalarm.R;
 import com.enesilhan.countdownalarm.widget.PresetWidgetProvider;
+import com.enesilhan.countdownalarm.widget.WidgetStore;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -46,6 +47,8 @@ public class AlarmService extends Service {
     public static final String ACTION_DISMISS = "com.enesilhan.countdownalarm.DISMISS";
     public static final String ACTION_SNOOZE = "com.enesilhan.countdownalarm.SNOOZE";
     public static final String ACTION_STOP = "com.enesilhan.countdownalarm.STOP";
+    /** Tekrarlayan alarmı tamamen bitir (bir daha kurulmaz). */
+    public static final String ACTION_STOP_REPEAT = "com.enesilhan.countdownalarm.STOP_REPEAT";
     public static final String EXTRA_NID = "nid";
     public static final String EXTRA_MINUTES = "minutes";
 
@@ -93,12 +96,16 @@ public class AlarmService extends Service {
                 startForegroundCompat(buildPlaceholder());
                 finishOrNext();
             }
-        } else if (ACTION_DISMISS.equals(action)) {
+        } else if (ACTION_DISMISS.equals(action) || ACTION_STOP_REPEAT.equals(action)) {
             AlarmStore.Item it = AlarmStore.get(this, nid);
             if (it != null) {
-                AlarmStore.remove(this, nid);
-                AlarmStore.addAction(this, "dismiss", it, 0);
-                AlarmPlugin.emitAction();
+                // Kapat: tekrarlayan alarm bir sonraki zamana kurulur; Tekrarı bitir: tamamen silinir
+                boolean rearmed = ACTION_DISMISS.equals(action) && rearmIfRepeating(it);
+                if (!rearmed) {
+                    AlarmStore.remove(this, nid);
+                    AlarmStore.addAction(this, "dismiss", it, 0);
+                    AlarmPlugin.emitAction();
+                }
             }
             if (nid == ringingNid || ringingNid == -1) finishOrNext();
         } else if (ACTION_SNOOZE.equals(action)) {
@@ -154,11 +161,32 @@ public class AlarmService extends Service {
     private void onTimeout() {
         AlarmStore.Item it = AlarmStore.get(this, ringingNid);
         if (it != null) {
-            // Artık çalmayacak; yeniden başlatmada tekrar kurulmasın
-            AlarmStore.remove(this, it.nid);
             showMissed(it);
+            // Tekrarlayan alarm yanıtlanmasa da sıradaki zamana kurulur; diğerleri silinir
+            if (!rearmIfRepeating(it)) AlarmStore.remove(this, it.nid);
         }
         finishOrNext();
+    }
+
+    /**
+     * Tekrarlayan alarmı bir sonraki zamana kurar. Aralık, ertelemeden bağımsız
+     * asıl çalma zamanından (slot) hesaplanır; böylece saatler kaymaz.
+     */
+    private boolean rearmIfRepeating(AlarmStore.Item it) {
+        if (!it.repeat || it.durationMin <= 0) return false;
+        long step = it.durationMin * 60_000L;
+        long next = it.slot > 0 ? it.slot : it.at;
+        long now = System.currentTimeMillis();
+        do {
+            next += step;
+        } while (next <= now);
+        it.slot = next;
+        it.at = next;
+        AlarmStore.put(this, it);
+        AlarmScheduler.schedule(this, it);
+        AlarmStore.addAction(this, "rearm", it, it.at);
+        AlarmPlugin.emitAction();
+        return true;
     }
 
     /* ---------- Ses ve titreşim ---------- */
@@ -281,11 +309,13 @@ public class AlarmService extends Service {
 
     private Notification buildRingingNotification(AlarmStore.Item it) {
         ensureChannels();
-        return new NotificationCompat.Builder(this, CHANNEL_RING)
+        String text = clock(it.created) + "'de kurulan alarm çalıyor";
+        if (it.repeat) text += " · 🔁 " + WidgetStore.durationText(it.durationMin) + " arayla";
+        NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_RING)
             .setSmallIcon(R.drawable.ic_stat_alarm)
             .setColor(0xFF7C6CFF)
             .setContentTitle("⏰ " + it.label)
-            .setContentText(clock(it.created) + "'de kurulan alarm çalıyor")
+            .setContentText(text)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -295,8 +325,9 @@ public class AlarmService extends Service {
             // Ekran kapalı/kilitliyken çalma ekranını doğrudan aç
             .setFullScreenIntent(openAppIntent(it.nid), true)
             .addAction(0, "Ertele · " + SNOOZE_MINUTES + " dk", serviceIntent(ACTION_SNOOZE, it.nid))
-            .addAction(0, "Kapat", serviceIntent(ACTION_DISMISS, it.nid))
-            .build();
+            .addAction(0, "Kapat", serviceIntent(ACTION_DISMISS, it.nid));
+        if (it.repeat) b.addAction(0, "Tekrarı bitir", serviceIntent(ACTION_STOP_REPEAT, it.nid));
+        return b.build();
     }
 
     private Notification buildPlaceholder() {

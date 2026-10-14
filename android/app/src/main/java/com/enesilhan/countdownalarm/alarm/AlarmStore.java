@@ -38,6 +38,11 @@ public final class AlarmStore {
         public String soundName = "";
         /** Hangi kayıtlı hazır süreden kuruldu (widget'lar bununla eşleşir); yoksa boş. */
         public String presetId = "";
+        /** Tekrarlayan alarm: kapatılınca durationMin sonra yeniden kurulur. */
+        public boolean repeat = false;
+        public int durationMin = 0;
+        /** Ertelemeden bağımsız asıl çalma zamanı; tekrar aralığı buna göre hesaplanır. */
+        public long slot = 0;
 
         JSONObject toJson() throws JSONException {
             return new JSONObject()
@@ -48,7 +53,10 @@ public final class AlarmStore {
                 .put("created", created)
                 .put("sound", sound)
                 .put("soundName", soundName)
-                .put("presetId", presetId);
+                .put("presetId", presetId)
+                .put("repeat", repeat)
+                .put("durationMin", durationMin)
+                .put("slot", slot);
         }
 
         static Item fromJson(JSONObject o) {
@@ -61,6 +69,9 @@ public final class AlarmStore {
             it.sound = o.optString("sound", "");
             it.soundName = o.optString("soundName", "");
             it.presetId = o.optString("presetId", "");
+            it.repeat = o.optBoolean("repeat", false);
+            it.durationMin = o.optInt("durationMin", 0);
+            it.slot = o.optLong("slot", 0);
             return it;
         }
     }
@@ -112,7 +123,8 @@ public final class AlarmStore {
 
     /**
      * Uygulama dışında (bildirim, widget) yapılan bir işlemi web tarafı için
-     * sıraya al: "dismiss", "snooze" ya da widget'tan kurulan alarm için "create".
+     * sıraya al: "dismiss", "snooze", tekrarlayan alarmın yeniden kurulması için
+     * "rearm" ya da widget'tan kurulan alarm için "create".
      */
     public static synchronized void addAction(Context c, String type, Item it, long newAt) {
         JSONArray actions;

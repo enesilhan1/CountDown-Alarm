@@ -109,7 +109,7 @@ function stopRinging() {
   ringTimer = null;
   ringAudio.pause();
   ringAudio.removeAttribute("src");
-  navigator.vibrate?.(0);
+  if (navigator.userActivation?.hasBeenActive ?? true) navigator.vibrate?.(0);
 }
 
 /* ---------- Bildirim ---------- */
@@ -209,12 +209,25 @@ async function syncNative() {
             sound: it.sound || "",
             soundName: it.soundName || "",
             presetId: it.presetId || "",
+            repeat: !!it.repeat,
+            slot: it.slot || it.at,
           });
           changed = true;
         }
         continue;
       }
       if (i === -1) continue;
+      if (act.type === "rearm") {
+        // Tekrarlayan alarm bildirimden/widget'tan kapatıldı ve yeniden kuruldu
+        const a = alarms[i];
+        a.slot = act.item?.slot || act.at;
+        a.end = act.at;
+        a.start = a.end - a.duration * 60000;
+        a.snoozes = 0;
+        notified.delete(a.id);
+        changed = true;
+        continue;
+      }
       if (act.type === "dismiss") {
         alarms.splice(i, 1);
       } else if (act.type === "snooze") {
@@ -243,6 +256,9 @@ function scheduleNative(a) {
     sound: a.sound || "",
     soundName: a.soundName || "",
     presetId: a.presetId || "",
+    repeat: !!a.repeat,
+    duration: a.duration || 0,
+    slot: a.slot || a.end,
   }).catch((e) => console.warn("Alarm sisteme kurulamadı", e));
 }
 
@@ -386,6 +402,9 @@ function updateSetup() {
   $("dialFill").style.strokeDashoffset = DIAL_LEN * (1 - Math.min(total, DIAL_MAX_MIN) / DIAL_MAX_MIN);
   createBtn.disabled = total === 0;
   $("presetSave").disabled = total === 0;
+  $("repeatSub").textContent = total
+    ? `Kapatılana kadar ${fmtDuration(total)} arayla çalar`
+    : "Kapatılana kadar aynı süre arayla çalar";
   // Kayıtlı süre: süre ve etiket aynıysa seçili; yerleşikler yalnızca o zaman değilse
   const label = labelEl.value.trim();
   let customActive = false;
@@ -472,13 +491,15 @@ function renderPresets() {
       dur.textContent = fmtDuration(p.minutes);
       chip.append(dur);
     }
+    if (p.repeat) chip.append("🔁");
     if (p.soundName) chip.append("🎵");
     const x = document.createElement("span");
     x.className = "chip-x";
     x.textContent = "×";
     chip.append(x);
     chip.setAttribute("aria-label",
-      [p.label, fmtDuration(p.minutes), p.soundName && `ses: ${p.soundName}`].filter(Boolean).join(", "));
+      [p.label, fmtDuration(p.minutes), p.repeat && "tekrarlı", p.soundName && `ses: ${p.soundName}`]
+        .filter(Boolean).join(", "));
 
     chip.addEventListener("click", () => (editingPresets ? deletePreset(p.id) : applyPreset(p)));
     box.insertBefore(chip, firstBuiltin);
@@ -490,6 +511,7 @@ function renderPresets() {
 
 function applyPreset(p) {
   labelEl.value = p.label || "";
+  $("repeat").checked = !!p.repeat;
   if (p.sound) {
     sound = { uri: p.sound, name: p.soundName };
     saveSound();
@@ -520,16 +542,18 @@ $("presetSave").addEventListener("click", () => {
   // Tarayıcıda seçilen dosya sayfa yenilenince kaybolur; sesi yalnızca Android'de kaydet
   const keep = Alarm && sound ? sound : null;
   // Aynı süre + etiket zaten varsa yenisini ekleme, sesini güncelle
+  const repeat = $("repeat").checked;
   let p = presets.find((x) => x.minutes === minutes && (x.label || "") === label);
   if (p) {
     p.sound = keep?.uri || "";
     p.soundName = keep?.name || "";
+    p.repeat = repeat;
   } else {
     if (presets.length >= MAX_PRESETS) {
       alert(`En fazla ${MAX_PRESETS} hazır süre kaydedebilirsin. Önce Düzenle ile birini sil.`);
       return;
     }
-    p = { id: crypto.randomUUID(), minutes, label, sound: keep?.uri || "", soundName: keep?.name || "" };
+    p = { id: crypto.randomUUID(), minutes, label, sound: keep?.uri || "", soundName: keep?.name || "", repeat };
     presets.push(p);
   }
   savePresets();
@@ -555,6 +579,7 @@ createBtn.addEventListener("click", () => {
   setEditing(false);
   requestNotifyPermission();
   const now = Date.now();
+  const end = now + total * 60000;
   const alarm = {
     id: crypto.randomUUID(),
     nid: newNid(),
@@ -562,7 +587,9 @@ createBtn.addEventListener("click", () => {
     duration: total,
     created: now,
     start: now,
-    end: now + total * 60000,
+    end,
+    slot: end, // ertelemeden bağımsız asıl çalma zamanı (tekrar aralığı buna göre)
+    repeat: $("repeat").checked,
     snoozes: 0,
     sound: sound?.uri || "",
     soundName: sound?.name || "",
@@ -572,6 +599,7 @@ createBtn.addEventListener("click", () => {
   alarms.push(alarm);
   scheduleNative(alarm);
   labelEl.value = "";
+  $("repeat").checked = false;
   setTotal(0);
   commit();
 });
@@ -582,6 +610,24 @@ function removeAlarm(id) {
   const i = alarms.findIndex((a) => a.id === id);
   if (i !== -1) cancelNative(alarms.splice(i, 1)[0]);
   notified.delete(id);
+  commit();
+}
+
+// Çalan alarmı kapat: tekrarlayan alarm bir sonraki zamana kurulur
+function dismissAlarm(id) {
+  const a = alarms.find((x) => x.id === id);
+  if (!a?.repeat) return removeAlarm(id);
+  const step = a.duration * 60000;
+  let next = a.slot || a.end;
+  do next += step;
+  while (next <= Date.now());
+  a.slot = next;
+  a.end = next;
+  a.start = next - step;
+  a.snoozes = 0;
+  notified.delete(id);
+  // Çalan sesi durdur, yeni zamana kur
+  cancelNative(a).then(() => scheduleNative(a));
   commit();
 }
 
@@ -616,7 +662,8 @@ function renderList() {
     li.querySelector(".alarm-label").textContent =
       a.label + (a.snoozes ? ` (${a.snoozes}× ertelendi)` : "");
     li.querySelector(".alarm-at").textContent = fmtClock(new Date(a.end));
-    li.querySelector(".alarm-sound").textContent = a.soundName ? ` · 🎵 ${a.soundName}` : "";
+    li.querySelector(".alarm-sound").textContent =
+      (a.repeat ? ` · 🔁 ${fmtDuration(a.duration)} arayla` : "") + (a.soundName ? ` · 🎵 ${a.soundName}` : "");
     li.querySelector(".delete").addEventListener("click", () => removeAlarm(a.id));
     ul.appendChild(li);
   }
@@ -630,7 +677,8 @@ function renderList() {
 const ringEl = $("ring");
 let ringingId = null;
 
-$("dismissBtn").addEventListener("click", () => ringingId && removeAlarm(ringingId));
+$("dismissBtn").addEventListener("click", () => ringingId && dismissAlarm(ringingId));
+$("stopRepeatBtn").addEventListener("click", () => ringingId && removeAlarm(ringingId));
 document.querySelectorAll(".snooze").forEach((btn) =>
   btn.addEventListener("click", () => ringingId && snoozeAlarm(ringingId, Number(btn.dataset.min)))
 );
@@ -653,6 +701,9 @@ function updateRinging(now) {
     $("ringSub").textContent =
       `${fmtClock(new Date(a.created))}'de ${fmtDuration(a.duration ?? Math.round((a.end - a.start) / 60000))} için kuruldu` +
       (a.snoozes ? ` · ${a.snoozes}× ertelendi` : "");
+    $("ringRepeat").hidden = !a.repeat;
+    $("ringRepeat").textContent = a.repeat ? `🔁 Kapatınca ${fmtDuration(a.duration)} sonra tekrar çalacak` : "";
+    $("stopRepeatBtn").hidden = !a.repeat;
   }
   $("ringMore").textContent = due.length > 1 ? `+${due.length - 1} alarm daha çalıyor` : "";
   $("ringSound").hidden = !!Alarm || audioCtx?.state === "running" || !ringAudio.paused;
