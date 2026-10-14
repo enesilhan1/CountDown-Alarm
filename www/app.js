@@ -86,7 +86,8 @@ function startRinging() {
   if (ringTimer) return;
   const pulse = () => {
     beep();
-    navigator.vibrate?.([500, 300, 500]);
+    // Tarayıcı, kullanıcı ekrana dokunmadan titreşime izin vermiyor
+    if (navigator.userActivation?.hasBeenActive ?? true) navigator.vibrate?.([500, 300, 500]);
   };
   pulse();
   ringTimer = setInterval(pulse, 1500);
@@ -346,6 +347,8 @@ function updateRinging(now) {
   const a = due[0];
   if (ringingId !== a.id) {
     ringingId = a.id;
+    // Açık klavye çalma ekranını kapatmasın
+    document.activeElement?.blur();
     $("ringLabel").textContent = a.label;
     $("ringSub").textContent =
       `${fmtClock(new Date(a.created))}'de ${fmtDuration(a.duration ?? Math.round((a.end - a.start) / 60000))} için kuruldu` +
