@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Geri sayım süren widget: uygulamanın mor → turkuaz geçişi -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:endColor="#FF4FD1C5"
+        android:startColor="#FF7C6CFF"
+        android:type="linear" />
+    <corners android:radius="22dp" />
+</shape>

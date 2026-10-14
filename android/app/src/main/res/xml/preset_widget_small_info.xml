@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 1x1 hazır süre widget'ı: yalnızca süreyi gösterir -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="com.enesilhan.countdownalarm.widget.WidgetConfigActivity"
+    android:description="@string/widget_small_description"
+    android:initialLayout="@layout/widget_preset_small"
+    android:minWidth="40dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="40dp"
+    android:minResizeHeight="40dp"
+    android:previewImage="@mipmap/ic_launcher"
+    android:previewLayout="@layout/widget_preset_small_preview"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable" />

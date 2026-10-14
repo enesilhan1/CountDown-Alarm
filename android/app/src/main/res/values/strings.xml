@@ -6,4 +6,6 @@
     <string name="custom_url_scheme">com.enesilhan.countdownalarm</string>
     <string name="widget_name">Hazır süre</string>
     <string name="widget_description">Kayıtlı hazır sürelerinden birini tek dokunuşla başlat</string>
+    <string name="widget_small_name">Hazır süre · küçük</string>
+    <string name="widget_small_description">Yalnızca süreyi gösteren 1x1 hazır süre widget\'ı</string>
 </resources>

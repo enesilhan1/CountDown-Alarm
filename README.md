@@ -33,6 +33,10 @@ saati gibi kapatılana kadar çalar.
   - **Ana ekran widget'ı:** her widget bir kayıtlı hazır süreye bağlanır; dokununca uygulamayı
     açmadan alarm kurulur, kuruluyken çalma saati ve canlı geri sayım gösterir, tekrar dokununca
     iptal eder, çalarken kapatır. İstenildiği kadar widget eklenebilir
+  - **1x1 widget** ("Hazır süre · küçük" ya da büyük widget'ı küçültünce): yalnızca süre yazar
+    ("15dk", "8s", "1s30dk"); geri sayarken en yakın tam saati, son 1 saatte dakikayı gösterir
+    ("8s" → "7s" … "42dk"). Saniye gösterilmez; yalnızca değer değişince yenilenir
+  - Renkler: boşta koyu, geri sayarken mor → turkuaz, çalarken kırmızı
 
 ## Çalıştırma
 

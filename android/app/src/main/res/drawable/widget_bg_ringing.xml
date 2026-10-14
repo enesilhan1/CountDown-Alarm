@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Çalan alarm -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:endColor="#FFFF8A65"
+        android:startColor="#FFFF4D6D"
+        android:type="linear" />
+    <corners android:radius="22dp" />
+</shape>

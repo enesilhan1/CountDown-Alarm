@@ -57,6 +57,19 @@
                 android:resource="@xml/preset_widget_info" />
         </receiver>
 
+        <!-- 1x1 küçük widget: aynı davranış, yalnızca süre gösterir -->
+        <receiver
+            android:name=".widget.PresetWidgetSmallProvider"
+            android:exported="false"
+            android:label="@string/widget_small_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/preset_widget_small_info" />
+        </receiver>
+
         <!-- Widget eklenirken hazır süre seçimi -->
         <activity
             android:name=".widget.WidgetConfigActivity"

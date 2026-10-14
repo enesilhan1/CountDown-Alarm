@@ -78,7 +78,7 @@ public class WidgetConfigActivity extends Activity {
 
     private void choose(WidgetStore.Preset p) {
         WidgetStore.bind(this, widgetId, p.id);
-        PresetWidgetProvider.update(this, AppWidgetManager.getInstance(this), widgetId);
+        PresetWidgetProvider.updateAll(this);
         setResult(RESULT_OK, new Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId));
         finish();
     }
