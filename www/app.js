@@ -83,11 +83,19 @@ function beep() {
   }
 }
 
-function startRinging() {
+// Tarayıcıda seçilen ses dosyası (yoksa bip)
+const ringAudio = new Audio();
+ringAudio.loop = true;
+
+function startRinging(alarm) {
   // Android'de sesi ve titreşimi yerel servis çalıyor
   if (ringTimer || Alarm) return;
+  if (alarm?.sound) {
+    ringAudio.src = alarm.sound;
+    ringAudio.play().catch(() => {}); // çalınamazsa bip devreye girer
+  }
   const pulse = () => {
-    beep();
+    if (ringAudio.paused) beep();
     // Tarayıcı, kullanıcı ekrana dokunmadan titreşime izin vermiyor
     if (navigator.userActivation?.hasBeenActive ?? true) navigator.vibrate?.([500, 300, 500]);
   };
@@ -99,6 +107,8 @@ function stopRinging() {
   if (!ringTimer) return;
   clearInterval(ringTimer);
   ringTimer = null;
+  ringAudio.pause();
+  ringAudio.removeAttribute("src");
   navigator.vibrate?.(0);
 }
 
@@ -166,6 +176,7 @@ async function initNative() {
   try {
     await syncNative();
     await Alarm.addListener("alarmAction", syncNative);
+    await Alarm.addListener("previewEnded", () => setPreviewing(false));
     document.addEventListener("visibilitychange", () => !document.hidden && syncNative());
     // Gelecekteki tüm alarmların sistemde kurulu olduğundan emin ol
     alarms.filter((a) => a.end > Date.now()).forEach(scheduleNative);
@@ -207,6 +218,7 @@ function scheduleNative(a) {
     label: a.label,
     at: a.end,
     created: a.created,
+    sound: a.sound || "",
   }).catch((e) => console.warn("Alarm sisteme kurulamadı", e));
 }
 
@@ -215,6 +227,117 @@ function cancelNative(a) {
   if (!Alarm || a?.nid == null) return Promise.resolve();
   return Alarm.cancel({ nid: a.nid }).catch(() => {});
 }
+
+/* ---------- Alarm sesi ---------- */
+
+// Seçilen ses yeni alarmlar için varsayılan olur; her alarm kendi sesini saklar.
+// Android'de content:// adresi kalıcıdır. Tarayıcıda dosya yalnızca bu oturumda
+// çalınabildiği için kaydedilmez.
+const SOUND_KEY = "sureAlarm.sound";
+let sound = loadSound(); // { uri, name } | null (null: varsayılan alarm sesi)
+
+function loadSound() {
+  if (!Alarm) return null;
+  try {
+    const s = JSON.parse(localStorage.getItem(SOUND_KEY));
+    return s?.uri ? s : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSound() {
+  if (!Alarm) return;
+  try {
+    if (sound) localStorage.setItem(SOUND_KEY, JSON.stringify(sound));
+    else localStorage.removeItem(SOUND_KEY);
+  } catch {
+    // Kaydedilemezse seçim yalnızca bu oturumda geçerli
+  }
+}
+
+function renderSound() {
+  $("soundName").textContent = sound?.name || "Varsayılan alarm sesi";
+  $("soundName").title = sound?.name || "";
+  $("soundReset").hidden = !sound;
+}
+
+$("soundPick").addEventListener("click", async () => {
+  stopPreview();
+  if (!Alarm) {
+    $("soundFile").click();
+    return;
+  }
+  try {
+    const r = await Alarm.pickSound();
+    if (r.cancelled) return;
+    sound = { uri: r.uri, name: r.name };
+    saveSound();
+    renderSound();
+  } catch (e) {
+    alert(e.message || "Ses seçilemedi");
+  }
+});
+
+$("soundFile").addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  if (!file) return;
+  sound = { uri: URL.createObjectURL(file), name: file.name.replace(/\.[^.]+$/, "") };
+  renderSound();
+});
+
+$("soundReset").addEventListener("click", () => {
+  stopPreview();
+  sound = null;
+  saveSound();
+  renderSound();
+});
+
+/* Dinle (en fazla 15 sn) */
+const previewAudio = new Audio();
+let previewing = false;
+let previewTimer = null;
+
+function setPreviewing(on) {
+  previewing = on;
+  const btn = $("soundPreview");
+  btn.textContent = on ? "■" : "▶";
+  btn.classList.toggle("playing", on);
+  btn.setAttribute("aria-label", on ? "Durdur" : "Sesi dinle");
+  if (!on) clearTimeout(previewTimer);
+}
+
+function stopPreview() {
+  if (!previewing) return;
+  if (Alarm) Alarm.stopPreview().catch(() => {});
+  else previewAudio.pause();
+  setPreviewing(false);
+}
+
+$("soundPreview").addEventListener("click", async () => {
+  if (previewing) {
+    stopPreview();
+    return;
+  }
+  try {
+    if (Alarm) {
+      await Alarm.previewSound({ uri: sound?.uri || "" });
+    } else if (sound) {
+      previewAudio.src = sound.uri;
+      await previewAudio.play();
+      previewTimer = setTimeout(stopPreview, 15000);
+    } else {
+      ensureAudio(); // tarayıcıda varsayılan ses: bip
+      beep();
+      return;
+    }
+    setPreviewing(true);
+  } catch {
+    alert("Ses çalınamadı");
+  }
+});
+previewAudio.addEventListener("ended", () => setPreviewing(false));
 
 /* ---------- Kurulum paneli ---------- */
 
@@ -267,6 +390,7 @@ createBtn.addEventListener("click", () => {
   const total = totalMinutes();
   if (!total) return;
   ensureAudio();
+  stopPreview();
   requestNotifyPermission();
   const now = Date.now();
   const alarm = {
@@ -278,6 +402,8 @@ createBtn.addEventListener("click", () => {
     start: now,
     end: now + total * 60000,
     snoozes: 0,
+    sound: sound?.uri || "",
+    soundName: sound?.name || "",
   };
   alarms.push(alarm);
   scheduleNative(alarm);
@@ -326,6 +452,7 @@ function renderList() {
     li.querySelector(".alarm-label").textContent =
       a.label + (a.snoozes ? ` (${a.snoozes}× ertelendi)` : "");
     li.querySelector(".alarm-at").textContent = fmtClock(new Date(a.end));
+    li.querySelector(".alarm-sound").textContent = a.soundName ? ` · 🎵 ${a.soundName}` : "";
     li.querySelector(".delete").addEventListener("click", () => removeAlarm(a.id));
     ul.appendChild(li);
   }
@@ -364,11 +491,11 @@ function updateRinging(now) {
       (a.snoozes ? ` · ${a.snoozes}× ertelendi` : "");
   }
   $("ringMore").textContent = due.length > 1 ? `+${due.length - 1} alarm daha çalıyor` : "";
-  $("ringSound").hidden = !!Alarm || audioCtx?.state === "running";
+  $("ringSound").hidden = !!Alarm || audioCtx?.state === "running" || !ringAudio.paused;
   ringEl.hidden = false;
   document.title = "⏰ " + a.label;
   due.forEach(notify);
-  startRinging();
+  startRinging(a);
 }
 
 /* ---------- Saat döngüsü ---------- */
@@ -402,6 +529,7 @@ document.addEventListener("visibilitychange", () => !document.hidden && tick());
 
 $("dialFill").style.strokeDasharray = DIAL_LEN;
 updateSetup();
+renderSound();
 renderList();
 initNative();
 setInterval(tick, 1000);

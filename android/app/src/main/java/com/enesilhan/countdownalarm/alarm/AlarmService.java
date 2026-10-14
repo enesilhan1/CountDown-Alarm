@@ -122,7 +122,8 @@ public class AlarmService extends Service {
         PowerManager pm = getSystemService(PowerManager.class);
         lockedWhenRang = (km != null && km.isKeyguardLocked()) || (pm != null && !pm.isInteractive());
         startForegroundCompat(buildRingingNotification(it));
-        startSound();
+        AlarmPlugin.stopPreviewIfPlaying();
+        startSound(it.sound);
         startVibration();
         handler.removeCallbacks(timeout);
         handler.postDelayed(timeout, TIMEOUT_MS);
@@ -156,21 +157,45 @@ public class AlarmService extends Service {
 
     /* ---------- Ses ve titreşim ---------- */
 
-    private void startSound() {
-        stopSound();
-        Uri uri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM);
+    /** Telefonun varsayılan alarm sesi (yoksa zil, o da yoksa bildirim sesi). */
+    static Uri defaultAlarmUri(Context c) {
+        Uri uri = RingtoneManager.getActualDefaultRingtoneUri(c, RingtoneManager.TYPE_ALARM);
         if (uri == null) uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
         if (uri == null) uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        return uri;
+    }
+
+    /** Alarm ses seviyesinde (sessiz modda da) çalan bir oynatıcı hazırlar. */
+    static MediaPlayer createAlarmPlayer(Context c, Uri uri) throws Exception {
+        MediaPlayer mp = new MediaPlayer();
         try {
-            player = new MediaPlayer();
-            player.setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM) // alarm ses seviyesinde, sessiz modda da
+            mp.setAudioAttributes(new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build());
+            mp.setDataSource(c, uri);
+            mp.prepare();
+            return mp;
+        } catch (Exception e) {
+            mp.release();
+            throw e;
+        }
+    }
+
+    private void startSound(String customSound) {
+        stopSound();
+        // Seçilen dosya silinmiş ya da çalınamıyorsa alarm sessiz kalmasın: varsayılan sese dön
+        if (customSound != null && !customSound.isEmpty()) {
+            try {
+                player = createAlarmPlayer(this, Uri.parse(customSound));
+            } catch (Exception e) {
+                Log.w(TAG, "Seçilen alarm sesi çalınamadı, varsayılan ses kullanılıyor", e);
+            }
+        }
+        try {
+            if (player == null) player = createAlarmPlayer(this, defaultAlarmUri(this));
             player.setWakeMode(this, PowerManager.PARTIAL_WAKE_LOCK);
-            player.setDataSource(this, uri);
             player.setLooping(true);
-            player.prepare();
             player.start();
         } catch (Exception e) {
             Log.w(TAG, "Alarm sesi çalınamadı", e);

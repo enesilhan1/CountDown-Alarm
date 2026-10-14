@@ -31,6 +31,8 @@ public final class AlarmStore {
         public String label;
         public long at;
         public long created;
+        /** Seçilen ses dosyasının content:// adresi; boşsa telefonun alarm sesi. */
+        public String sound = "";
 
         JSONObject toJson() throws JSONException {
             return new JSONObject()
@@ -38,7 +40,8 @@ public final class AlarmStore {
                 .put("alarmId", alarmId)
                 .put("label", label)
                 .put("at", at)
-                .put("created", created);
+                .put("created", created)
+                .put("sound", sound);
         }
 
         static Item fromJson(JSONObject o) {
@@ -48,6 +51,7 @@ public final class AlarmStore {
             it.label = o.optString("label", "Alarm");
             it.at = o.optLong("at");
             it.created = o.optLong("created");
+            it.sound = o.optString("sound", "");
             return it;
         }
     }

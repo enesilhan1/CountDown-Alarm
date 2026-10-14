@@ -181,3 +181,23 @@ h2 { font-size: 1rem; margin: 0 0 16px; color: var(--muted); font-weight: 600; l
   border: 1px solid #ffffff1a; background: var(--surface-2); border-radius: 12px; padding: 10px 14px;
 }
 .snooze:hover { border-color: var(--accent); }
+
+/* Alarm sesi seçimi */
+.sound-row {
+  display: flex; align-items: center; gap: 8px; background: var(--surface-2);
+  border-radius: 14px; padding: 6px 6px 6px 14px; min-height: 52px;
+}
+.sound-icon { flex: 0 0 auto; }
+.sound-name {
+  flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sound-row .icon-btn { flex: 0 0 40px; }
+.sound-row .icon-btn:hover { color: var(--accent-2); background: #4fd1c51a; }
+.sound-row .icon-btn.playing { color: var(--accent-2); }
+.icon-btn[hidden] { display: none; }
+.sound-change {
+  flex: 0 0 auto; border: 1px solid #ffffff1a; background: transparent; border-radius: 12px;
+  padding: 9px 12px; font-size: .9rem;
+}
+.sound-change:hover { border-color: var(--accent); }
+.alarm-sound { color: var(--accent-2); }

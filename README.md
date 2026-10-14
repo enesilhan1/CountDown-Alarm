@@ -16,6 +16,8 @@ saati gibi kapatılana kadar çalar.
 - Alarmlar tarayıcıda saklanır; sayfa yenilense de kaybolmaz
 - Süre dolunca tam ekran çalma ekranı, ses, titreşim ve bildirim
 - Ertele (5 / 10 / 15 dk) ve Kapat
+- Alarm sesi seçimi: telefondaki ses dosyalarından seçilir, dinlenebilir; her alarm kendi
+  sesini saklar. Dosya silinirse varsayılan alarm sesi çalar
 - **Android:**
   - Alarm saati yöntemiyle kurulum (`setAlarmClock`): güç tasarrufunda ertelenmez,
     durum çubuğunda alarm simgesi

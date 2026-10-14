@@ -68,6 +68,18 @@
         <input id="label" type="text" maxlength="40" placeholder="ör. İlaç, Çamaşır, Toplantı">
       </label>
 
+      <div class="field">
+        <span>Alarm sesi</span>
+        <div class="sound-row">
+          <span class="sound-icon" aria-hidden="true">🎵</span>
+          <span class="sound-name" id="soundName">Varsayılan alarm sesi</span>
+          <button class="icon-btn" id="soundPreview" type="button" aria-label="Sesi dinle" title="Dinle">▶</button>
+          <button class="icon-btn" id="soundReset" type="button" aria-label="Varsayılan sese dön" title="Varsayılana dön" hidden>↺</button>
+          <button class="sound-change" id="soundPick" type="button">Değiştir</button>
+        </div>
+        <input id="soundFile" type="file" accept="audio/*" hidden>
+      </div>
+
       <button class="primary" id="createBtn" disabled>Alarmı Kur</button>
     </section>
 
@@ -107,7 +119,7 @@
     <li class="alarm">
       <div class="alarm-main">
         <div class="alarm-remaining">--:--:--</div>
-        <div class="alarm-meta"><span class="alarm-label"></span> · <span class="alarm-at"></span></div>
+        <div class="alarm-meta"><span class="alarm-label"></span> · <span class="alarm-at"></span><span class="alarm-sound"></span></div>
         <div class="progress"><div class="progress-bar"></div></div>
       </div>
       <button class="icon-btn delete" aria-label="Alarmı sil">✕</button>
