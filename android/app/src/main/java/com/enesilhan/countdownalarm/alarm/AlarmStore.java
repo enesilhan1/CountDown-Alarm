@@ -7,6 +7,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.enesilhan.countdownalarm.widget.PresetWidgetProvider;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -33,6 +35,9 @@ public final class AlarmStore {
         public long created;
         /** Seçilen ses dosyasının content:// adresi; boşsa telefonun alarm sesi. */
         public String sound = "";
+        public String soundName = "";
+        /** Hangi kayıtlı hazır süreden kuruldu (widget'lar bununla eşleşir); yoksa boş. */
+        public String presetId = "";
 
         JSONObject toJson() throws JSONException {
             return new JSONObject()
@@ -41,7 +46,9 @@ public final class AlarmStore {
                 .put("label", label)
                 .put("at", at)
                 .put("created", created)
-                .put("sound", sound);
+                .put("sound", sound)
+                .put("soundName", soundName)
+                .put("presetId", presetId);
         }
 
         static Item fromJson(JSONObject o) {
@@ -52,6 +59,8 @@ public final class AlarmStore {
             it.at = o.optLong("at");
             it.created = o.optLong("created");
             it.sound = o.optString("sound", "");
+            it.soundName = o.optString("soundName", "");
+            it.presetId = o.optString("presetId", "");
             return it;
         }
     }
@@ -76,6 +85,7 @@ public final class AlarmStore {
             return;
         }
         prefs(c).edit().putString(KEY_ALARMS, all.toString()).apply();
+        PresetWidgetProvider.updateAll(c);
     }
 
     public static synchronized Item get(Context c, int nid) {
@@ -87,6 +97,7 @@ public final class AlarmStore {
         JSONObject all = readAlarms(c);
         all.remove(String.valueOf(nid));
         prefs(c).edit().putString(KEY_ALARMS, all.toString()).apply();
+        PresetWidgetProvider.updateAll(c);
     }
 
     public static synchronized List<Item> all(Context c) {
@@ -99,7 +110,10 @@ public final class AlarmStore {
         return list;
     }
 
-    /** Bildirimden yapılan bir işlemi web tarafı için sıraya al. */
+    /**
+     * Uygulama dışında (bildirim, widget) yapılan bir işlemi web tarafı için
+     * sıraya al: "dismiss", "snooze" ya da widget'tan kurulan alarm için "create".
+     */
     public static synchronized void addAction(Context c, String type, Item it, long newAt) {
         JSONArray actions;
         try {
@@ -108,7 +122,8 @@ public final class AlarmStore {
                 .put("type", type)
                 .put("alarmId", it.alarmId)
                 .put("time", System.currentTimeMillis())
-                .put("at", newAt));
+                .put("at", newAt)
+                .put("item", it.toJson()));
         } catch (JSONException e) {
             return;
         }

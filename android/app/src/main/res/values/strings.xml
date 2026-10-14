@@ -4,4 +4,6 @@
     <string name="title_activity_main">Süre Alarmı</string>
     <string name="package_name">com.enesilhan.countdownalarm</string>
     <string name="custom_url_scheme">com.enesilhan.countdownalarm</string>
+    <string name="widget_name">Hazır süre</string>
+    <string name="widget_description">Kayıtlı hazır sürelerinden birini tek dokunuşla başlat</string>
 </resources>

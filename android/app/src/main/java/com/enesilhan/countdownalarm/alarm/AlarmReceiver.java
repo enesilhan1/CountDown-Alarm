@@ -6,6 +6,8 @@ import android.content.Intent;
 
 import androidx.core.content.ContextCompat;
 
+import com.enesilhan.countdownalarm.widget.PresetWidgetProvider;
+
 /** Alarm zamanı gelince çalma servisini başlatır; açılışta alarmları yeniden kurar. */
 public class AlarmReceiver extends BroadcastReceiver {
 
@@ -22,6 +24,8 @@ public class AlarmReceiver extends BroadcastReceiver {
         } else if (Intent.ACTION_BOOT_COMPLETED.equals(action)
             || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
             AlarmScheduler.rescheduleAll(context);
+            // Güncelleme/yeniden başlatma sonrası widget'lar varsayılan görünümde kalmasın
+            PresetWidgetProvider.updateAll(context);
         }
     }
 }

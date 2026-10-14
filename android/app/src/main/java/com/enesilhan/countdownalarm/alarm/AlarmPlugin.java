@@ -18,6 +18,8 @@ import android.util.Log;
 import androidx.activity.result.ActivityResult;
 
 import com.enesilhan.countdownalarm.MainActivity;
+import com.enesilhan.countdownalarm.widget.PresetWidgetProvider;
+import com.enesilhan.countdownalarm.widget.WidgetStore;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -58,7 +60,7 @@ public class AlarmPlugin extends Plugin {
     }
 
     /** Bildirimden Ertele/Kapat yapıldı; uygulama açıksa web tarafı hemen senkronlansın. */
-    static void emitAction() {
+    public static void emitAction() {
         AlarmPlugin p = instance.get();
         if (p == null) return;
         p.releaseLockScreen();
@@ -84,6 +86,8 @@ public class AlarmPlugin extends Plugin {
         it.label = call.getString("label", "Alarm");
         it.created = call.getLong("created", System.currentTimeMillis());
         it.sound = call.getString("sound", "");
+        it.soundName = call.getString("soundName", "");
+        it.presetId = call.getString("presetId", "");
         AlarmStore.put(getContext(), it);
         AlarmScheduler.schedule(getContext(), it);
         call.resolve();
@@ -126,6 +130,15 @@ public class AlarmPlugin extends Plugin {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(i);
         }
+        call.resolve();
+    }
+
+    /** Kayıtlı hazır süreler; widget'lar bunları gösterir. */
+    @PluginMethod
+    public void syncPresets(PluginCall call) {
+        JSArray presets = call.getArray("presets", new JSArray());
+        WidgetStore.setPresets(getContext(), presets.toString());
+        PresetWidgetProvider.updateAll(getContext());
         call.resolve();
     }
 

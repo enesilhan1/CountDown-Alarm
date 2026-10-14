@@ -28,6 +28,9 @@ saati gibi kapatılana kadar çalar.
   - Ekran kapalı/kilitliyken çalma ekranı kilit ekranının üstünde tam ekran açılır
   - Bildirimden Ertele / Kapat (uygulama kapalıyken de)
   - Telefon yeniden başlasa da alarmlar korunur
+  - **Ana ekran widget'ı:** her widget bir kayıtlı hazır süreye bağlanır; dokununca uygulamayı
+    açmadan alarm kurulur, kuruluyken çalma saati ve canlı geri sayım gösterir, tekrar dokununca
+    iptal eder, çalarken kapatır. İstenildiği kadar widget eklenebilir
 
 ## Çalıştırma
 
@@ -67,6 +70,7 @@ cd android
 | `capacitor.config.json` | Capacitor ayarları (uygulama kimliği, adı, web klasörü) |
 | `android/` | Android Studio projesi |
 | `android/app/src/main/java/.../alarm/` | Yerel alarm: zamanlayıcı, çalma servisi, JS köprüsü (`Alarm` eklentisi) |
+| `android/app/src/main/java/.../widget/` | Hazır süre widget'ı ve widget eklerken açılan seçim ekranı |
 
 ## Yol haritası
 

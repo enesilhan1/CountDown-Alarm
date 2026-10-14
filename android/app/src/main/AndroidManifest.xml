@@ -44,6 +44,32 @@
             </intent-filter>
         </receiver>
 
+        <!-- Ana ekran widget'ı: kayıtlı hazır süreyi tek dokunuşla başlatır -->
+        <receiver
+            android:name=".widget.PresetWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/preset_widget_info" />
+        </receiver>
+
+        <!-- Widget eklenirken hazır süre seçimi -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:label="@string/widget_name"
+            android:theme="@style/AppTheme.NoActionBar">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- Alarm sesini çalan ön plan servisi -->
         <service
             android:name=".alarm.AlarmService"

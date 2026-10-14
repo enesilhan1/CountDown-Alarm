@@ -175,6 +175,7 @@ async function initNative() {
   if (!Alarm) return;
   try {
     await syncNative();
+    syncPresetsNative();
     await Alarm.addListener("alarmAction", syncNative);
     await Alarm.addListener("previewEnded", () => setPreviewing(false));
     document.addEventListener("visibilitychange", () => !document.hidden && syncNative());
@@ -185,13 +186,34 @@ async function initNative() {
   }
 }
 
-// Uygulama kapalıyken bildirimden yapılan Ertele/Kapat işlemlerini listeye uygula
+// Uygulama dışında (bildirim, widget) yapılan işlemleri listeye uygula
 async function syncNative() {
   try {
     const { actions } = await Alarm.takePendingActions();
     let changed = false;
     for (const act of actions) {
       const i = alarms.findIndex((a) => a.id === act.alarmId);
+      if (act.type === "create") {
+        // Widget'tan kurulan alarm
+        const it = act.item;
+        if (i === -1 && it) {
+          alarms.push({
+            id: it.alarmId,
+            nid: it.nid,
+            label: it.label,
+            duration: Math.round((it.at - it.created) / 60000),
+            created: it.created,
+            start: it.created,
+            end: it.at,
+            snoozes: 0,
+            sound: it.sound || "",
+            soundName: it.soundName || "",
+            presetId: it.presetId || "",
+          });
+          changed = true;
+        }
+        continue;
+      }
       if (i === -1) continue;
       if (act.type === "dismiss") {
         alarms.splice(i, 1);
@@ -219,6 +241,8 @@ function scheduleNative(a) {
     at: a.end,
     created: a.created,
     sound: a.sound || "",
+    soundName: a.soundName || "",
+    presetId: a.presetId || "",
   }).catch((e) => console.warn("Alarm sisteme kurulamadı", e));
 }
 
@@ -419,6 +443,12 @@ function savePresets() {
   } catch {
     // Kaydedilemezse yalnızca bu oturumda kalır
   }
+  syncPresetsNative();
+}
+
+// Android'de ana ekran widget'ları hazır süreleri buradan alır
+function syncPresetsNative() {
+  if (Alarm) Alarm.syncPresets({ presets }).catch(() => {});
 }
 
 function renderPresets() {
@@ -536,6 +566,8 @@ createBtn.addEventListener("click", () => {
     snoozes: 0,
     sound: sound?.uri || "",
     soundName: sound?.name || "",
+    // Seçili kayıtlı hazır süreden kurulduysa widget'ı da bu alarmı gösterir
+    presetId: document.querySelector(".chip-custom.active")?.dataset.id || "",
   };
   alarms.push(alarm);
   scheduleNative(alarm);

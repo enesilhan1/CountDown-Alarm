@@ -27,6 +27,7 @@ import androidx.core.app.NotificationCompat;
 
 import com.enesilhan.countdownalarm.MainActivity;
 import com.enesilhan.countdownalarm.R;
+import com.enesilhan.countdownalarm.widget.PresetWidgetProvider;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -63,6 +64,10 @@ public class AlarmService extends Service {
      * ancak burada, çalma anında doğru ölçebiliyoruz.
      */
     public static volatile boolean lockedWhenRang = false;
+
+    public static boolean isRinging(int nid) {
+        return ringingNid == nid;
+    }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable timeout = this::onTimeout;
@@ -123,6 +128,7 @@ public class AlarmService extends Service {
         lockedWhenRang = (km != null && km.isKeyguardLocked()) || (pm != null && !pm.isInteractive());
         startForegroundCompat(buildRingingNotification(it));
         AlarmPlugin.stopPreviewIfPlaying();
+        PresetWidgetProvider.updateAll(this); // widget'lar "Çalıyor" göstersin
         startSound(it.sound);
         startVibration();
         handler.removeCallbacks(timeout);
