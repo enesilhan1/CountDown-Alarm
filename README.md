@@ -106,4 +106,4 @@ adresini aç. (Tarayıcıda alarm yalnızca sayfa açıkken çalar; gerçek alar
 
 ## Lisans
 
-[MIT](LICENSE) © 2026 enesilhan1
+[MIT](LICENSE) © 2026 Enes İlhan
